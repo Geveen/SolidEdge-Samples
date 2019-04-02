@@ -550,6 +550,15 @@ namespace DemoAddIn
             if (Keyboard.IsKeyDown(Key.LeftShift) && Keyboard.IsKeyDown(Key.S) && !getting_suggestions)
             {
                 getting_suggestions = true;
+
+                var _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
+                SolidEdgePart.PartDocument _doc = _application.ActiveDocument as SolidEdgePart.PartDocument;
+                SolidEdgePart.Model _model = _doc.Models.Item(1);
+                foreach( var feature in _model.Features)
+                {
+                    MessageBox.Show(feature.GetType().ToString());
+                }
+
                 string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
                 var values = new Dictionary<string, string>{};
 
