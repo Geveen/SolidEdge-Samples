@@ -14,6 +14,9 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Windows.Forms;
+using SolidEdgeFramework;
+using System.Windows.Input;
+using System.Net.Http;
 
 namespace DemoAddIn
 {
@@ -28,9 +31,12 @@ namespace DemoAddIn
         SolidEdgeFramework.ISEFileUIEvents, // Solid Egde File UI Events
         SolidEdgeFramework.ISENewFileUIEvents, // Solid Egde New File UI Events
         SolidEdgeFramework.ISEECEvents, // Solid Edge EC Events
-        SolidEdgeFramework.ISEShortCutMenuEvents // Solid Edge Shortcut Menu Events
+        SolidEdgeFramework.ISEShortCutMenuEvents, // Solid Edge Shortcut Menu Events
+        SolidEdgeFramework.ISEMouseEvents // Solid Edge Mouse Events
     {
         private SolidEdgeCommunity.ConnectionPointController _connectionPointController;
+        private static readonly HttpClient client = new HttpClient();
+        private static bool getting_suggestions = false;
 
         #region SolidEdgeCommunity.AddIn.SolidEdgeAddIn overrides
 
@@ -67,6 +73,7 @@ namespace DemoAddIn
 
             // Uncomment the following line to attach to the Solid Edge Shortcut Menu Events.
             //_connectionPointController.AdviseSink<SolidEdgeFramework.ISEShortCutMenuEvents>(this.Application);
+
         }
 
         /// <summary>
@@ -74,6 +81,14 @@ namespace DemoAddIn
         /// </summary>
         public override void OnConnectToEnvironment(SolidEdgeFramework.Environment environment, bool firstTime)
         {
+            if (environment.GetCategoryId().Equals(SolidEdgeSDK.EnvironmentCategories.Part))
+            {// Uncomment the following line to attach to the Solid Edge Mouse Events.
+                var cmd = (ISECommand)environment.Application.CreateCommand((int)SolidEdgeConstants.seCmdFlag.seNoDeactivate);
+                var mouse = (ISEMouse)cmd.Mouse;
+                cmd.Start();
+                mouse.EnabledMove = true;
+                _connectionPointController.AdviseSink<SolidEdgeFramework.ISEMouseEvents>(mouse);
+            }
         }
 
         /// <summary>
@@ -521,6 +536,45 @@ namespace DemoAddIn
 
         #endregion
 
+        #region Mouse Events
+        void ISEMouseEvents.MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+        }
+
+        void ISEMouseEvents.MouseUp(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+        }
+
+        async void ISEMouseEvents.MouseMove(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+            if (Keyboard.IsKeyDown(Key.LeftShift) && Keyboard.IsKeyDown(Key.S) && !getting_suggestions)
+            {
+                getting_suggestions = true;
+                string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
+                var values = new Dictionary<string, string>{};
+
+                var content = new FormUrlEncodedContent(values);
+                var response = await client.GetAsync(query);
+                var responseString = await response.Content.ReadAsStringAsync();
+                MessageBox.Show(responseString);
+                getting_suggestions = false;
+            }
+        }
+
+        void ISEMouseEvents.MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+        }
+
+        void ISEMouseEvents.MouseDblClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+        }
+
+        void ISEMouseEvents.MouseDrag(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, short DragState, int lKeyPointType, object pGraphicDispatch)
+        {
+        }
+
+        #endregion
+
         #region RegAsm.exe callbacks
 
         /// <summary>
@@ -573,7 +627,7 @@ namespace DemoAddIn
         {
             DemoAddIn.Unregister(t);
         }
-
         #endregion
+
     }
 }
