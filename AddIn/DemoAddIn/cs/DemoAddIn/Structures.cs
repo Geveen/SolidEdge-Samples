@@ -19,4 +19,15 @@ namespace DemoAddIn
         public double Y;
         public double Z;
     }
+
+    struct HoleInfo
+    {
+        public double diameter;
+        public double nx;
+        public double ny;
+        public double nz;
+        public double x;
+        public double y;
+        public double z;
+    }
 }

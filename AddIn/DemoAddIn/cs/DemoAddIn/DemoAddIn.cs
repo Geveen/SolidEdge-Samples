@@ -8,6 +8,7 @@
 using SolidEdgeCommunity.Extensions; // https://github.com/SolidEdgeCommunity/SolidEdge.Community/wiki/Using-Extension-Methods
 using System;
 using System.Collections.Generic;
+using System.Collections;
 using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -17,6 +18,7 @@ using System.Windows.Forms;
 using SolidEdgeFramework;
 using System.Windows.Input;
 using System.Net.Http;
+using SolidEdgePart;
 
 namespace DemoAddIn
 {
@@ -552,12 +554,111 @@ namespace DemoAddIn
                 getting_suggestions = true;
 
                 var _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
-                SolidEdgePart.PartDocument _doc = _application.ActiveDocument as SolidEdgePart.PartDocument;
-                SolidEdgePart.Model _model = _doc.Models.Item(1);
-                foreach( var feature in _model.Features)
+                PartDocument _doc = _application.ActiveDocument as PartDocument;
+                Model _model = _doc.Models.Item(1);
+                Holes _holes = _model.Holes;
+
+                ArrayList _holeInfos = new ArrayList();
+
+                foreach(Hole hole in _holes)
                 {
-                    MessageBox.Show(feature.GetType().ToString());
+                    HoleInfo _holeInfo = default(HoleInfo);
+                    SolidEdgePart.HoleData _holedata = hole.HoleData as SolidEdgePart.HoleData;
+                    _holeInfo.diameter = _holedata.HoleDiameter;
+                    Profile profile = hole.Profile as Profile;
+                    Holes2d holes2d = profile.Holes2d as Holes2d;
+                    Hole2d hole2d = holes2d.Item(1);
+
+                    double x_2d, y_2d, x_3d, y_3d, z_3d;
+                    hole2d.GetCenterPoint(out x_2d, out y_2d);
+                    profile.Convert2DCoordinate(x_2d, y_2d, out x_3d, out y_3d, out z_3d);
+
+                    _holeInfo.x = x_3d;
+                    _holeInfo.y = y_3d;
+                    _holeInfo.z = z_3d;
+
+                    
+                    RefPlane plane = profile.Plane as RefPlane;
+                    Array normals = new double[3] as Array;
+                    plane.GetNormal(ref normals);
+                    
+                    double[] ns = normals as double[];
+                    _holeInfo.nx = ns[0];
+                    _holeInfo.ny = ns[1];
+                    _holeInfo.nz = ns[2];
+
+                    _holeInfos.Add(_holeInfo);
+                    MessageBox.Show(_holeInfo.ToString());
                 }
+
+                string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [";
+                bool first = true;
+                foreach (HoleInfo hi in _holeInfos)
+                {
+                    if (!first)
+                    {
+                        query += ", ";
+                        first = false;
+                    }
+                    string add_v = String.Format("\"{0:0.00}\"", hi.diameter);
+                    query += add_v;
+                }
+                query += "], \"e\": ";
+
+                int v_source = 0;
+                first = true;
+                foreach (HoleInfo hi_source in _holeInfos)
+                {
+                    int v_dest = 0;
+                    string bucket_dir_source = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}{3:0.0000}", hi_source.nx, hi_source.ny, hi_source.nz);
+                    foreach (HoleInfo hi_dest in _holeInfos)
+                    {
+                        if (v_dest > v_source)
+                        {
+                            if (!first)
+                            {
+                                query += ", ";
+                                first = false;
+                            }
+
+                            string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}{3:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
+                            double e_dist = Math.Sqrt(Math.Pow(hi_source.x - hi_dest.x, 2) + Math.Pow(hi_source.y - hi_dest.y, 2) + Math.Pow(hi_source.z - hi_dest.z, 2));
+                            e_dist_bucket = Math.Ceiling(e_dist / dist_bucket_size)
+                            string add_e =
+
+                    e_dist_bucket = math.ceil(e_dist / dist_bucket_size)
+
+
+
+                        }
+
+                        string add_v = String.Format("{0:0.00}, ", hi.diameter);
+                    query += add_v;
+                }
+
+
+
+
+                line = 'v %s %s' % (v, hi[0])
+                    if verbose: print(line)
+            f.write(line + '\n')
+        for v_source, hi_source in enumerate(his):
+            bucket_loc_source = "%.4f%.4f%.4f" % (hi_source[1], hi_source[2], hi_source[3])
+                    bucket_dir_source = "%.4f%.4f%.4f" % (hi_source[4],hi_source[5],hi_source[6])
+            for v_dest, hi_dest in enumerate(his):
+                if v_dest > v_source:
+                    bucket_loc_dest = "%.4f%.4f%.4f" % (hi_dest[1],hi_dest[2],hi_dest[3])
+                    bucket_dir_dest = "%.4f%.4f%.4f" % (hi_dest[4],hi_dest[5],hi_dest[6])
+                    e_dist = math.sqrt((hi_source[1] - hi_dest[1]) * *2 + (hi_source[2] - hi_dest[2]) * *2 + (hi_source[3] - hi_dest[3]) * *2)
+                    e_dist_bucket = math.ceil(e_dist / dist_bucket_size)
+                    line = 'e %s %s %s' % (v_source, v_dest, e_dist_bucket)
+                    if verbose: print(line)
+                    f.write(line + '\n')
+                    if bucket_dir_source == bucket_dir_dest:
+                        line = 'e %s %s %s' % (v_source, v_dest, 'co_dir')
+                        if verbose: print(line)
+                        f.write(line + '\n')
+
 
                 string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
                 var values = new Dictionary<string, string>{};
