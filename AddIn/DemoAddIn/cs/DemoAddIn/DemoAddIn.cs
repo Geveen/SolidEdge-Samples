@@ -558,13 +558,13 @@ namespace DemoAddIn
                 Model _model = _doc.Models.Item(1);
                 Holes _holes = _model.Holes;
 
-                ArrayList _holeInfos = new ArrayList();
+                List<HoleInfo> _holeInfos = new List<HoleInfo>();
 
                 foreach(Hole hole in _holes)
                 {
                     HoleInfo _holeInfo = default(HoleInfo);
                     SolidEdgePart.HoleData _holedata = hole.HoleData as SolidEdgePart.HoleData;
-                    _holeInfo.diameter = _holedata.HoleDiameter;
+                    _holeInfo.diameter = 1000*_holedata.HoleDiameter;
                     Profile profile = hole.Profile as Profile;
                     Holes2d holes2d = profile.Holes2d as Holes2d;
                     Hole2d hole2d = holes2d.Item(1);
@@ -588,8 +588,16 @@ namespace DemoAddIn
                     _holeInfo.nz = ns[2];
 
                     _holeInfos.Add(_holeInfo);
-                    MessageBox.Show(_holeInfo.ToString());
+                    MessageBox.Show(string.Format("diam: {0:0.000} x: {1:0.000}, y: {2:0.000}, z: {3:0.000}, nx: {3:0.000}, ny: {3:0.000}, nz: {3:0.000}", _holeInfo.diameter,
+                                                                                                                                                           _holeInfo.x,
+                                                                                                                                                           _holeInfo.y,
+                                                                                                                                                           _holeInfo.z,
+                                                                                                                                                           _holeInfo.nx,
+                                                                                                                                                           _holeInfo.ny,
+                                                                                                                                                           _holeInfo.nz));
                 }
+
+                _holeInfos = _holeInfos.OrderBy(p => p.diameter).ToList();
 
                 string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [";
                 bool first = true;
@@ -598,19 +606,19 @@ namespace DemoAddIn
                     if (!first)
                     {
                         query += ", ";
-                        first = false;
                     }
-                    string add_v = String.Format("\"{0:0.00}\"", hi.diameter);
+                    first = false;
+                    string add_v = String.Format("\"{0:0.0}\"", hi.diameter);
                     query += add_v;
                 }
-                query += "], \"e\": ";
+                query += "], \"e\": [";
 
                 int v_source = 0;
                 first = true;
                 foreach (HoleInfo hi_source in _holeInfos)
                 {
                     int v_dest = 0;
-                    string bucket_dir_source = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}{3:0.0000}", hi_source.nx, hi_source.ny, hi_source.nz);
+                    string bucket_dir_source = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_source.nx, hi_source.ny, hi_source.nz);
                     foreach (HoleInfo hi_dest in _holeInfos)
                     {
                         if (v_dest > v_source)
@@ -618,49 +626,28 @@ namespace DemoAddIn
                             if (!first)
                             {
                                 query += ", ";
-                                first = false;
                             }
+                            first = false;
 
-                            string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}{3:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
+                            double dist_bucket_size = 50;
+                            string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
                             double e_dist = Math.Sqrt(Math.Pow(hi_source.x - hi_dest.x, 2) + Math.Pow(hi_source.y - hi_dest.y, 2) + Math.Pow(hi_source.z - hi_dest.z, 2));
-                            e_dist_bucket = Math.Ceiling(e_dist / dist_bucket_size)
-                            string add_e =
-
-                    e_dist_bucket = math.ceil(e_dist / dist_bucket_size)
-
-
-
+                            double e_dist_bucket = Math.Ceiling(e_dist / dist_bucket_size);
+                            string add_e = string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"{2:0}\"]", hi_source.diameter, hi_dest.diameter, e_dist_bucket);
+                            if (bucket_dir_source == bucket_dir_dest)
+                            {
+                                add_e += string.Format(",[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
+                                //add_e += string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
+                            }
+                            query += add_e;
                         }
-
-                        string add_v = String.Format("{0:0.00}, ", hi.diameter);
-                    query += add_v;
+                        v_dest += 1;
+                    }
+                    v_source += 1;
                 }
+                query += "]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
 
-
-
-
-                line = 'v %s %s' % (v, hi[0])
-                    if verbose: print(line)
-            f.write(line + '\n')
-        for v_source, hi_source in enumerate(his):
-            bucket_loc_source = "%.4f%.4f%.4f" % (hi_source[1], hi_source[2], hi_source[3])
-                    bucket_dir_source = "%.4f%.4f%.4f" % (hi_source[4],hi_source[5],hi_source[6])
-            for v_dest, hi_dest in enumerate(his):
-                if v_dest > v_source:
-                    bucket_loc_dest = "%.4f%.4f%.4f" % (hi_dest[1],hi_dest[2],hi_dest[3])
-                    bucket_dir_dest = "%.4f%.4f%.4f" % (hi_dest[4],hi_dest[5],hi_dest[6])
-                    e_dist = math.sqrt((hi_source[1] - hi_dest[1]) * *2 + (hi_source[2] - hi_dest[2]) * *2 + (hi_source[3] - hi_dest[3]) * *2)
-                    e_dist_bucket = math.ceil(e_dist / dist_bucket_size)
-                    line = 'e %s %s %s' % (v_source, v_dest, e_dist_bucket)
-                    if verbose: print(line)
-                    f.write(line + '\n')
-                    if bucket_dir_source == bucket_dir_dest:
-                        line = 'e %s %s %s' % (v_source, v_dest, 'co_dir')
-                        if verbose: print(line)
-                        f.write(line + '\n')
-
-
-                string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
+                //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
                 var values = new Dictionary<string, string>{};
 
                 var content = new FormUrlEncodedContent(values);
