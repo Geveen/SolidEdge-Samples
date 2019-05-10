@@ -558,6 +558,8 @@ namespace DemoAddIn
                 Model _model = _doc.Models.Item(1);
                 Holes _holes = _model.Holes;
 
+                
+
                 List<HoleInfo> _holeInfos = new List<HoleInfo>();
 
                 foreach (Hole hole in _holes)
@@ -657,9 +659,9 @@ namespace DemoAddIn
                 var values = new Dictionary<string, string> { };
 
                 var content = new FormUrlEncodedContent(values);
-                //var response = await _client.GetAsync(query);
-                //var responseString = await response.Content.ReadAsStringAsync();
-                //MessageBox.Show(responseString);
+                var response = await _client.GetAsync(query);
+                var responseString = await response.Content.ReadAsStringAsync();
+                MessageBox.Show(responseString);
                 _getting_suggestions = false;
             //}
         }
