@@ -13,6 +13,7 @@ namespace DemoAddIn
 
         public Ribbon2d()
         {
+
             // Get a reference to the current assembly. This is where the ribbon XML is embedded.
             var assembly = System.Reflection.Assembly.GetExecutingAssembly();
 
