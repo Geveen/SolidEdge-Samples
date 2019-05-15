@@ -12,6 +12,7 @@ namespace DemoAddIn
         private BoundingBoxInfo _boundingBoxInfo = default(BoundingBoxInfo);
         private bool _showOpenGlBoxes = false;
         private bool _showGdiPlus = false;
+        private bool _showCamera = false;
 
         public MyViewOverlay()
         {
@@ -123,7 +124,22 @@ namespace DemoAddIn
 
                 }
             }
+            
         }
+
+        public override void BeginDeviceContextDisplay()
+        {
+            base.BeginDeviceContextDisplay();
+            if (_showCamera)
+            {
+                MessageBox.Show("You Clicked the camera");
+                _showCamera = false;
+            }
+
+
+        }
+
+
 
         private void DrawBoundingBox(SolidEdgeSDK.IGL gl)
         {
@@ -378,6 +394,7 @@ namespace DemoAddIn
                 gl.glEnd();
             }
         }
+      
 
         public bool ShowBoundingBox
         {
@@ -414,5 +431,22 @@ namespace DemoAddIn
                 this.View.Update();
             }
         }
+
+        public bool ShowOpenCamera
+        {
+            get
+            {
+                return _showCamera;
+            }
+            set
+            {
+                _showCamera = value;
+
+                //Force the view to update
+                this.View.Update();
+            }
+            
+        }
+        
     }
 }

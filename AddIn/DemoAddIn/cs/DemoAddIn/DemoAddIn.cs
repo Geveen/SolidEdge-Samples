@@ -35,8 +35,8 @@ namespace DemoAddIn
         SolidEdgeFramework.ISENewFileUIEvents, // Solid Egde New File UI Events
         SolidEdgeFramework.ISEECEvents, // Solid Edge EC Events
         SolidEdgeFramework.ISEShortCutMenuEvents, // Solid Edge Shortcut Menu Events
-        SolidEdgeFramework.ISEMouseEvents,// Solid Edge Mouse Events
-        ISEMouseEx //
+        SolidEdgeFramework.ISEMouseEvents // Solid Edge Mouse Events
+       
 
 
     {
@@ -257,7 +257,7 @@ namespace DemoAddIn
         {
             if (theCommandID == 10307)
             {
-                ConnectMouse();
+                //ConnectMouse();
             }
         }
 
@@ -552,7 +552,7 @@ namespace DemoAddIn
         async void ISEMouseEvents.MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
             //if (Keyboard.IsKeyDown(Key.LeftShift) && Keyboard.IsKeyDown(Key.S) && !_getting_suggestions)
-
+            MessageBox.Show($"dx{1000 * dX}, dy{1000 * dY}, dz{1000 * dZ}");
             _getting_suggestions = true;
 
             var _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
@@ -595,8 +595,8 @@ namespace DemoAddIn
                 _holeInfo.nz = ns[2];
 
                 _holeInfos.Add(_holeInfo);
-                /* MessageBox.Show(string.Format("diam: {0:0.000} x: {1:0.000}, y: {2:0.000}, z: {3:0.000}, nx: {3:0.000}, ny: {3:0.000}, nz: {3:0.000}",
-                                              _holeInfo.diameter, _holeInfo.x, _holeInfo.y, _holeInfo.z, _holeInfo.nx,   _holeInfo.ny,  _holeInfo.nz));*/
+                MessageBox.Show(string.Format("diam: {0:0.000} x: {1:0.000}, y: {2:0.000}, z: {3:0.000}, nx: {3:0.000}, ny: {3:0.000}, nz: {3:0.000}",
+                                             _holeInfo.diameter, _holeInfo.x, _holeInfo.y, _holeInfo.z, _holeInfo.nx, _holeInfo.ny, _holeInfo.nz));
 
 
 
@@ -663,14 +663,15 @@ namespace DemoAddIn
             }
 
             query += "]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
-
+            
+          
             int PointOnGraphicFlag;
             double PointOnGraphic_X;
             double PointOnGraphic_Y;
             double PointOnGraphic_Z;
             _mouse.PointOnGraphic(out PointOnGraphicFlag, out PointOnGraphic_X, out PointOnGraphic_Y, out PointOnGraphic_Z);
-            //MessageBox.Show($"GraphicFlag={PointOnGraphicFlag}, Graphic_X {PointOnGraphic_X}," +
-              //  $" Graphic_Y={PointOnGraphic_Y}, Graphic_Z={PointOnGraphic_Y}");
+            MessageBox.Show($"GraphicFlag={PointOnGraphicFlag}, Graphic_X {PointOnGraphic_X}," +
+              $" Graphic_Y={PointOnGraphic_Y}, Graphic_Z={PointOnGraphic_Y}");
 
 
             //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
@@ -770,9 +771,6 @@ namespace DemoAddIn
         }
         #endregion
 
-
-        #region ISEMouseEX
-
         private void ConnectMouse()
         {
             _cmd = (SolidEdgeFramework.Command)_application.CreateCommand((int)SolidEdgeConstants.seCmdFlag.seNoDeactivate);
@@ -783,89 +781,11 @@ namespace DemoAddIn
             _mouse.ScaleMode = 1;   // Design model coordinates.
             _mouse.WindowTypes = 1; // Graphic window's only.
             _connectionPointController.AdviseSink<SolidEdgeFramework.ISEMouseEvents>(_mouse);
+            
         }
-
-        public void ClearLocateFilter()
-        {
-
-        }
-
-        public void AddToLocateFilter(int lFilter)
-        {
-
-        }
-
         
-    
-        public void PointOnGraphic(out int PointOnGraphicFlag, out double PointOnGraphic_X, out double PointOnGraphic_Y, out double PointOnGraphic_Z)
-        {
-            _mouse.PointOnGraphic(out PointOnGraphicFlag, out PointOnGraphic_X, out PointOnGraphic_Y, out PointOnGraphic_Z);
-
-            MessageBox.Show($"{PointOnGraphicFlag}, {PointOnGraphic_X}, {PointOnGraphic_Y}, {PointOnGraphic_Z} ");
-
-        }
-
-        public int ScaleMode { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public bool EnabledMove { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-
-        public object LastEventWindow => throw new NotImplementedException();
-
-        public object LastUpEventWindow => throw new NotImplementedException();
-
-        public object LastDownEventWindow => throw new NotImplementedException();
-
-        public object LastMoveEventWindow => throw new NotImplementedException();
-
-        public short LastEventShift => throw new NotImplementedException();
-
-        public short LastUpEventShift => throw new NotImplementedException();
-
-        public short LastDownEventShift => throw new NotImplementedException();
-
-        public short LastMoveEventShift => throw new NotImplementedException();
-
-        public short LastEventButton => throw new NotImplementedException();
-
-        public short LastUpEventButton => throw new NotImplementedException();
-
-        public short LastDownEventButton => throw new NotImplementedException();
-
-        public short LastMoveEventButton => throw new NotImplementedException();
-
-        public double LastEventX => throw new NotImplementedException();
-
-        public double LastEventY => throw new NotImplementedException();
-
-        public double LastEventZ => throw new NotImplementedException();
-
-        public double LastUpEventX => throw new NotImplementedException();
-
-        public double LastUpEventY => throw new NotImplementedException();
-
-        public double LastUpEventZ => throw new NotImplementedException();
-
-        public double LastDownEventX => throw new NotImplementedException();
-
-        public double LastDownEventY => throw new NotImplementedException();
-
-        public double LastDownEventZ => throw new NotImplementedException();
-
-        public double LastMoveEventX => throw new NotImplementedException();
-
-        public double LastMoveEventY => throw new NotImplementedException();
-
-        public double LastMoveEventZ => throw new NotImplementedException();
-
-        public int WindowTypes { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-
-        public int LastEventType => throw new NotImplementedException();
-
-        public bool EnabledDrag { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public int LocateMode { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public int DynamicsMode { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public int PauseLocate { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-        public bool InterDocumentLocate { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        
     }
-    #endregion
+    
     
 }
