@@ -147,6 +147,7 @@
     <Content Include="res\Folder_16x16.png" />
     <Content Include="res\GdiPlus_32.png" />
     <Content Include="res\Help_32x32.png" />
+    <Content Include="res\hole_32x32.png" />
     <Content Include="res\Monitor_16x16.png" />
     <Content Include="res\Notepad_32x32.png" />
     <Content Include="res\Photograph_32x32.png" />

@@ -44,7 +44,7 @@ namespace DemoAddIn
         private static readonly HttpClient _client = new HttpClient();
         private static bool _getting_suggestions = false;
         private static SolidEdgeFramework.Command _cmd = null;
-        private static SolidEdgeFramework.Mouse _mouse = null;
+        private static SolidEdgeFramework.Mouse _mouse = default(SolidEdgeFramework.Mouse);
         private static SolidEdgeFramework.Application _application = null;
         #region SolidEdgeCommunity.AddIn.SolidEdgeAddIn overrides
 
@@ -551,6 +551,7 @@ namespace DemoAddIn
         #region Mouse Events
         async void ISEMouseEvents.MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
+            
             //if (Keyboard.IsKeyDown(Key.LeftShift) && Keyboard.IsKeyDown(Key.S) && !_getting_suggestions)
             MessageBox.Show($"dx{1000 * dX}, dy{1000 * dY}, dz{1000 * dZ}");
             _getting_suggestions = true;
@@ -669,9 +670,11 @@ namespace DemoAddIn
             double PointOnGraphic_X;
             double PointOnGraphic_Y;
             double PointOnGraphic_Z;
+
             _mouse.PointOnGraphic(out PointOnGraphicFlag, out PointOnGraphic_X, out PointOnGraphic_Y, out PointOnGraphic_Z);
             MessageBox.Show($"GraphicFlag={PointOnGraphicFlag}, Graphic_X {PointOnGraphic_X}," +
               $" Graphic_Y={PointOnGraphic_Y}, Graphic_Z={PointOnGraphic_Y}");
+            
 
 
             //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
@@ -682,13 +685,10 @@ namespace DemoAddIn
             var responseString = await response.Content.ReadAsStringAsync();
             MessageBox.Show(responseString);
             _getting_suggestions = false;
-            //}
+            //}*/
         }
 
-        private void MessageBoxButtons()
-        {
-            throw new NotImplementedException();
-        }
+ 
 
         void ISEMouseEvents.MouseUp(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {

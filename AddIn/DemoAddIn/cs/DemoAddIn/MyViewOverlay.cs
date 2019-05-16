@@ -1,9 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Globalization;
 using System.Drawing;
-using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using SolidEdgePart;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
 
 namespace DemoAddIn
 {
@@ -12,7 +15,15 @@ namespace DemoAddIn
         private BoundingBoxInfo _boundingBoxInfo = default(BoundingBoxInfo);
         private bool _showOpenGlBoxes = false;
         private bool _showGdiPlus = false;
-        private bool _showCamera = false;
+        private bool _showHole = false;
+
+
+        private SolidEdgeCommunity.ConnectionPointController _connectionPointController;
+        private static readonly HttpClient _client = new HttpClient();
+        private static bool _getting_suggestions = false;
+        private static SolidEdgeFramework.Command _cmd = null;
+        private static SolidEdgeFramework.Mouse _mouse = default(SolidEdgeFramework.Mouse);
+        private static SolidEdgeFramework.Application _application = null;
 
         public MyViewOverlay()
         {
@@ -124,20 +135,156 @@ namespace DemoAddIn
 
                 }
             }
-            
-        }
-
-        public override void BeginDeviceContextDisplay()
-        {
-            base.BeginDeviceContextDisplay();
-            if (_showCamera)
+           
+            if (_showHole)
             {
-                MessageBox.Show("You Clicked the camera");
-                _showCamera = false;
-            }
+               
+                Holebutton_Click();
 
+                async void Holebutton_Click()
+                {
+
+                   // MessageBox.Show("You Clicked the camera");
+
+                    //if (Keyboard.IsKeyDown(Key.LeftShift) && Keyboard.IsKeyDown(Key.S) && !_getting_suggestions)
+
+
+                    var _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
+
+                    PartDocument _doc = _application.ActiveDocument as PartDocument;
+                    Model _model = _doc.Models.Item(1);
+                    Holes _holes = _model.Holes;
+
+
+                    List<HoleInfo> _holeInfos = new List<HoleInfo>();
+
+                    foreach (Hole hole in _holes)
+                    {
+                        HoleInfo _holeInfo = default(HoleInfo);
+                        SolidEdgePart.HoleData _holedata = hole.HoleData as SolidEdgePart.HoleData;
+                        _holeInfo.diameter = 1000 * _holedata.HoleDiameter;
+                        Profile profile = hole.Profile as Profile;
+                        Holes2d holes2d = profile.Holes2d as Holes2d;
+                        Hole2d hole2d = holes2d.Item(1);
+
+                        double x_2d, y_2d, x_3d, y_3d, z_3d;
+                        hole2d.GetCenterPoint(out x_2d, out y_2d);
+                        profile.Convert2DCoordinate(x_2d, y_2d, out x_3d, out y_3d, out z_3d);
+
+                        _holeInfo.x = x_3d * 1000;
+                        _holeInfo.y = y_3d * 1000;
+                        _holeInfo.z = z_3d * 1000;
+
+
+
+
+
+                        RefPlane plane = profile.Plane as RefPlane;
+                        Array normals = new double[3] as Array;
+                        plane.GetNormal(ref normals);
+
+                        double[] ns = normals as double[];
+                        _holeInfo.nx = ns[0];
+                        _holeInfo.ny = ns[1];
+                        _holeInfo.nz = ns[2];
+
+                        _holeInfos.Add(_holeInfo);
+                        MessageBox.Show(string.Format("diam: {0:0.000} x: {1:0.000}, y: {2:0.000}, z: {3:0.000}, nx: {3:0.000}, ny: {3:0.000}, nz: {3:0.000}",
+                                                _holeInfo.diameter, _holeInfo.x, _holeInfo.y, _holeInfo.z, _holeInfo.nx, _holeInfo.ny, _holeInfo.nz));
+
+
+
+                        
+                    }
+
+                    _holeInfos = _holeInfos.OrderBy(p => p.diameter).ToList();
+
+                    string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [";
+                    bool first = true;
+
+                    //adding the hole diameters to query
+                    foreach (HoleInfo hi in _holeInfos)
+                    {
+                        if (!first)
+                        {
+                            query += ", ";
+                        }
+                        first = false;
+                        string add_v = String.Format("\"{0:0.0}\"", hi.diameter);
+                        query += add_v;
+                    }
+                    query += "], \"e\": [";
+
+                    int v_source = 0;
+                    first = true;
+                    foreach (HoleInfo hi_source in _holeInfos)
+                    {
+                        int v_dest = 0;
+                        string bucket_dir_source = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_source.nx, hi_source.ny, hi_source.nz);
+                        // MessageBox.Show($"Source {hi_source.x}, {hi_source.y}, {hi_source.z} --- {hi_source.nx}, {hi_source.ny}, {hi_source.nz} ");
+                        // MessageBox.Show($"{bucket_dir_source}");
+                        foreach (HoleInfo hi_dest in _holeInfos)
+                        {
+
+                            if (v_dest > v_source)
+                            {
+                                //MessageBox.Show($"destination {hi_dest.x}, {hi_dest.y}, {hi_dest.z} --- {hi_dest.nx}, {hi_dest.ny}, {hi_dest.nz}");
+                                if (!first)
+                                {
+                                    query += ", ";
+                                }
+                                first = false;
+
+                                double dist_bucket_size = 50;
+                                string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
+                                double e_dist = Math.Sqrt(Math.Pow(hi_source.x - hi_dest.x, 2) + Math.Pow(hi_source.y - hi_dest.y, 2) + Math.Pow(hi_source.z - hi_dest.z, 2));
+                                //MessageBox.Show($"Bucket_dir_dest {bucket_dir_dest}, e_dist {e_dist}");
+                                double e_dist_bucket = Math.Ceiling(e_dist / dist_bucket_size);
+                                //MessageBox.Show($"e_dist_bucket {e_dist_bucket}");
+                                string add_e = string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"{2:0}\"]", hi_source.diameter, hi_dest.diameter, e_dist_bucket);
+                                if (bucket_dir_source == bucket_dir_dest)
+                                {
+                                    add_e += string.Format(",[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
+                                    //add_e += string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
+                                }
+                                query += add_e;
+                            }
+                            v_dest += 1;
+                        }
+                        v_source += 1;
+                    }
+
+                    query += "]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"], [[\"32.0\", \"*\"], \"4\"]]}";
+
+                     /*int PointOnGraphicFlag;
+                     double PointOnGraphic_X;
+                     double PointOnGraphic_Y;
+                     double PointOnGraphic_Z;
+                     _mouse.PointOnGraphic(out PointOnGraphicFlag, out PointOnGraphic_X, out PointOnGraphic_Y, out PointOnGraphic_Z);
+                     MessageBox.Show($"GraphicFlag={PointOnGraphicFlag}, Graphic_X {PointOnGraphic_X}," +
+                     $" Graphic_Y={PointOnGraphic_Y}, Graphic_Z={PointOnGraphic_Y}");*/
+                    
+
+                    //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
+                    var values = new Dictionary<string, string> { };
+
+                    var content = new FormUrlEncodedContent(values);
+                    var response = await _client.GetAsync(query);
+                    var responseString = await response.Content.ReadAsStringAsync();
+                    MessageBox.Show(responseString);
+                    _getting_suggestions = false;
+
+
+                }
+
+                _showHole = false;
+            }
+            
 
         }
+
+
+
 
 
 
@@ -432,21 +579,22 @@ namespace DemoAddIn
             }
         }
 
-        public bool ShowOpenCamera
+        public bool ShowOpenHole
         {
             get
             {
-                return _showCamera;
+                return _showHole;
             }
             set
             {
-                _showCamera = value;
+                _showHole = value;
 
                 //Force the view to update
                 this.View.Update();
             }
             
         }
-        
+
+       
     }
 }

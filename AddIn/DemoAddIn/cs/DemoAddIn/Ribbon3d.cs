@@ -14,7 +14,7 @@ namespace DemoAddIn
         private RibbonButton _buttonBoundingBox;
         private RibbonButton _buttonOpenGlBoxes;
         private RibbonButton _buttonGdiPlus;
-        private RibbonButton _buttonCamera;
+        private RibbonButton _buttonHole;
 
         public Ribbon3d()
         {
@@ -28,13 +28,13 @@ namespace DemoAddIn
             _buttonBoundingBox = GetButton(20);
             _buttonOpenGlBoxes = GetButton(21);
             _buttonGdiPlus = GetButton(22);
-            _buttonCamera = GetButton(4);
+            _buttonHole = GetButton(5);
 
             // Example of how to bind a particular ribbon control click event.
             _buttonBoundingBox.Click += _buttonBoundingBox_Click;
             _buttonOpenGlBoxes.Click += _buttonOpenGlBoxes_Click;
             _buttonGdiPlus.Click += _buttonGdiPlus_Click;
-            _buttonCamera.Click += _buttonCamera_Click;
+            _buttonHole.Click += _buttonHole_Click;
 
             // Get the Solid Edge version.
             var version = DemoAddIn.Instance.SolidEdgeVersion;
@@ -119,12 +119,12 @@ namespace DemoAddIn
             _buttonBoundingBox.Checked = !_buttonBoundingBox.Checked;
             overlay.ShowBoundingBox = _buttonBoundingBox.Checked;
         }
-        void _buttonCamera_Click(RibbonControl control)
+        void _buttonHole_Click(RibbonControl control)
         {
             var overlay = GetActiveOverlay();
 
-            _buttonCamera.Checked = !_buttonCamera.Checked;
-            overlay.ShowOpenCamera = _buttonCamera.Checked;
+            _buttonHole.Checked = !_buttonHole.Checked;
+            overlay.ShowOpenHole = _buttonHole.Checked;
             
         }
 
