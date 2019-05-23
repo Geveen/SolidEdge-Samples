@@ -36,16 +36,15 @@ namespace DemoAddIn
         SolidEdgeFramework.ISEECEvents, // Solid Edge EC Events
         SolidEdgeFramework.ISEShortCutMenuEvents, // Solid Edge Shortcut Menu Events
         SolidEdgeFramework.ISEMouseEvents // Solid Edge Mouse Events
-       
-
-
+        
     {
         private SolidEdgeCommunity.ConnectionPointController _connectionPointController;
         private static readonly HttpClient _client = new HttpClient();
         private static bool _getting_suggestions = false;
         private static SolidEdgeFramework.Command _cmd = null;
-        private static SolidEdgeFramework.Mouse _mouse = default(SolidEdgeFramework.Mouse);
+        private static SolidEdgeFramework.Mouse _mouse = null;
         private static SolidEdgeFramework.Application _application = null;
+        
         #region SolidEdgeCommunity.AddIn.SolidEdgeAddIn overrides
 
         /// <summary>
@@ -96,6 +95,8 @@ namespace DemoAddIn
                 _cmd = (SolidEdgeFramework.Command)_application.CreateCommand((int)SolidEdgeConstants.seCmdFlag.seNoDeactivate);
                 _cmd.Start();
                 ConnectMouse();
+                
+
             }
         }
 
@@ -165,6 +166,11 @@ namespace DemoAddIn
                 controller.Add<Ribbon3d>(environmentCategory, firstTime);
             }
             else if (environmentCategory.Equals(SolidEdgeSDK.EnvironmentCategories.DMSheetMetal))
+            {
+                // Synchronous SheetMetal Environment
+                controller.Add<Ribbon3d>(environmentCategory, firstTime);
+            }
+            else if (environmentCategory.Equals(SolidEdgeSDK.EnvironmentCategories.Sketch))
             {
                 // Synchronous SheetMetal Environment
                 controller.Add<Ribbon3d>(environmentCategory, firstTime);
@@ -551,9 +557,25 @@ namespace DemoAddIn
         #region Mouse Events
         async void ISEMouseEvents.MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
+
+        }
+
+        void ISEMouseEvents.MouseUp(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+
+        }
+
+        async void ISEMouseEvents.MouseMove(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+
+        }
+
+        async void ISEMouseEvents.MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
             
+
             //if (Keyboard.IsKeyDown(Key.LeftShift) && Keyboard.IsKeyDown(Key.S) && !_getting_suggestions)
-            MessageBox.Show($"dx{1000 * dX}, dy{1000 * dY}, dz{1000 * dZ}");
+            //MessageBox.Show($"dx{1000 * dX}, dy{1000 * dY}, dz{1000 * dZ}");
             _getting_suggestions = true;
 
             var _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
@@ -561,7 +583,7 @@ namespace DemoAddIn
             PartDocument _doc = _application.ActiveDocument as PartDocument;
             Model _model = _doc.Models.Item(1);
             Holes _holes = _model.Holes;
-
+            
 
             List<HoleInfo> _holeInfos = new List<HoleInfo>();
 
@@ -583,9 +605,6 @@ namespace DemoAddIn
                 _holeInfo.z = z_3d * 1000;
 
 
-
-
-
                 RefPlane plane = profile.Plane as RefPlane;
                 Array normals = new double[3] as Array;
                 plane.GetNormal(ref normals);
@@ -600,10 +619,8 @@ namespace DemoAddIn
                                              _holeInfo.diameter, _holeInfo.x, _holeInfo.y, _holeInfo.z, _holeInfo.nx, _holeInfo.ny, _holeInfo.nz));
 
 
-
-
-
             }
+
 
             _holeInfos = _holeInfos.OrderBy(p => p.diameter).ToList();
 
@@ -624,6 +641,7 @@ namespace DemoAddIn
             query += "], \"e\": [";
 
 
+            double dist_bucket_size = 50;
             int v_source = 0;
             first = true;
             foreach (HoleInfo hi_source in _holeInfos)
@@ -644,7 +662,7 @@ namespace DemoAddIn
                         }
                         first = false;
 
-                        double dist_bucket_size = 50;
+                        
                         string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
                         double e_dist = Math.Sqrt(Math.Pow(hi_source.x - hi_dest.x, 2) + Math.Pow(hi_source.y - hi_dest.y, 2) + Math.Pow(hi_source.z - hi_dest.z, 2));
                         //MessageBox.Show($"Bucket_dir_dest {bucket_dir_dest}, e_dist {e_dist}");
@@ -663,19 +681,37 @@ namespace DemoAddIn
                 v_source += 1;
             }
 
-            query += "]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
-            
-          
-            int PointOnGraphicFlag;
-            double PointOnGraphic_X;
-            double PointOnGraphic_Y;
-            double PointOnGraphic_Z;
+            // query += "]}, \"location\":[[[\"32.0\", \"*\"], \"co_dir\"],";
+             query += "]}, \"location\": [";
 
-            _mouse.PointOnGraphic(out PointOnGraphicFlag, out PointOnGraphic_X, out PointOnGraphic_Y, out PointOnGraphic_Z);
-            MessageBox.Show($"GraphicFlag={PointOnGraphicFlag}, Graphic_X {PointOnGraphic_X}," +
-              $" Graphic_Y={PointOnGraphic_Y}, Graphic_Z={PointOnGraphic_Y}");
-            
+            _mouse.PointOnGraphic(out int PointOnGraphicFlag, out double PointOnGraphic_X, out double PointOnGraphic_Y, out double PointOnGraphic_Z);
+            MessageBox.Show($"PointonGraphic {PointOnGraphicFlag}, {PointOnGraphic_X}, {PointOnGraphic_Y}, {PointOnGraphic_Z}");
 
+            first = true;
+            //Calculating distance from the mouse location to the hole center points 
+            foreach (HoleInfo H_dest in _holeInfos)
+            {
+                if (!first)
+                {
+                    query += ", ";
+                }
+                first = false;
+
+                double e_dest = Math.Sqrt(Math.Pow(H_dest.x - (1000*PointOnGraphic_X), 2) + Math.Pow(H_dest.y - (1000*PointOnGraphic_Y), 2) + Math.Pow(H_dest.z - (1000*PointOnGraphic_Z), 2));
+                double e_dist_bucket = Math.Ceiling(e_dest / dist_bucket_size);
+                string add_e = string.Format("[[\"{0:0.0}\", \"*\"], \"{1:0}\"]", H_dest.diameter, e_dist_bucket);
+                query += add_e;
+                // MessageBox.Show($"diameter {H_dest.diameter}, Dist {e_dest}, Bucket Num {e_dist_bucket}");
+               
+            }
+            query += "]}";
+
+            MessageBox.Show($"{query}");
+
+
+            var ss = _doc.SelectSet;
+            var face = ss.Count;
+            
 
             //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
             var values = new Dictionary<string, string> { };
@@ -684,24 +720,9 @@ namespace DemoAddIn
             var response = await _client.GetAsync(query);
             var responseString = await response.Content.ReadAsStringAsync();
             MessageBox.Show(responseString);
+
             _getting_suggestions = false;
             //}*/
-        }
-
- 
-
-        void ISEMouseEvents.MouseUp(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
-        {
-
-        }
-
-        async void ISEMouseEvents.MouseMove(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
-        {
-
-        }
-
-        void ISEMouseEvents.MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
-        {
 
         }
 
@@ -716,6 +737,21 @@ namespace DemoAddIn
         }
 
         #endregion
+
+       
+        private void ConnectMouse()
+        {
+            _cmd = (SolidEdgeFramework.Command)_application.CreateCommand((int)SolidEdgeConstants.seCmdFlag.seNoDeactivate);
+            _mouse = (SolidEdgeFramework.Mouse)_cmd.Mouse;
+            _cmd.Start();
+            _mouse.EnabledMove = true;
+            _mouse.LocateMode = (int)SolidEdgeConstants.seLocateModes.seLocateSimple;
+            _mouse.ScaleMode = 1;   // Design model coordinates.
+            _mouse.WindowTypes = 1; // Graphic window's only.
+            _mouse.AddToLocateFilter(32);
+            _connectionPointController.AdviseSink<SolidEdgeFramework.ISEMouseEvents>(_mouse);
+
+        }
 
         #region RegAsm.exe callbacks
 
@@ -771,20 +807,7 @@ namespace DemoAddIn
         }
         #endregion
 
-        private void ConnectMouse()
-        {
-            _cmd = (SolidEdgeFramework.Command)_application.CreateCommand((int)SolidEdgeConstants.seCmdFlag.seNoDeactivate);
-            _mouse = (SolidEdgeFramework.Mouse)_cmd.Mouse;
-            _cmd.Start();
-            _mouse.EnabledMove = true;
-            _mouse.LocateMode = (int)SolidEdgeConstants.seLocateModes.seSmartLocate;
-            _mouse.ScaleMode = 1;   // Design model coordinates.
-            _mouse.WindowTypes = 1; // Graphic window's only.
-            _connectionPointController.AdviseSink<SolidEdgeFramework.ISEMouseEvents>(_mouse);
-            
-        }
-        
-        
+       
     }
     
     

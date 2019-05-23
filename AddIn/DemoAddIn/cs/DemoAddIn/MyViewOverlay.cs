@@ -22,7 +22,7 @@ namespace DemoAddIn
         private static readonly HttpClient _client = new HttpClient();
         private static bool _getting_suggestions = false;
         private static SolidEdgeFramework.Command _cmd = null;
-        private static SolidEdgeFramework.Mouse _mouse = default(SolidEdgeFramework.Mouse);
+        private static SolidEdgeFramework.Mouse _mouse = null;
         private static SolidEdgeFramework.Application _application = null;
 
         public MyViewOverlay()
@@ -256,14 +256,16 @@ namespace DemoAddIn
 
                     query += "]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"], [[\"32.0\", \"*\"], \"4\"]]}";
 
-                     /*int PointOnGraphicFlag;
-                     double PointOnGraphic_X;
-                     double PointOnGraphic_Y;
-                     double PointOnGraphic_Z;
-                     _mouse.PointOnGraphic(out PointOnGraphicFlag, out PointOnGraphic_X, out PointOnGraphic_Y, out PointOnGraphic_Z);
-                     MessageBox.Show($"GraphicFlag={PointOnGraphicFlag}, Graphic_X {PointOnGraphic_X}," +
-                     $" Graphic_Y={PointOnGraphic_Y}, Graphic_Z={PointOnGraphic_Y}");*/
-                    
+                    /*int PointOnGraphicFlag;
+                    double PointOnGraphic_X;
+                    double PointOnGraphic_Y;
+                    double PointOnGraphic_Z;
+                    _mouse.PointOnGraphic(out PointOnGraphicFlag, out PointOnGraphic_X, out PointOnGraphic_Y, out PointOnGraphic_Z);
+                    MessageBox.Show($"GraphicFlag={PointOnGraphicFlag}, Graphic_X {PointOnGraphic_X}," +
+                    $" Graphic_Y={PointOnGraphic_Y}, Graphic_Z={PointOnGraphic_Y}");*/
+
+                    _mouse.PointOnGraphic(out int PointOnGraphicFlag, out double PointOnGraphic_X, out double PointOnGraphic_Y, out double PointOnGraphic_Z);
+                    MessageBox.Show($"{PointOnGraphicFlag}, {PointOnGraphic_X}, {PointOnGraphic_Y}, {PointOnGraphic_Z}");
 
                     //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
                     var values = new Dictionary<string, string> { };
@@ -283,6 +285,11 @@ namespace DemoAddIn
 
         }
 
+       
+        
+            
+
+        
 
 
 
