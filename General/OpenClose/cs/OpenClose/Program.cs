@@ -22,7 +22,7 @@ namespace OpenClose
             var documents = application.Documents;
 
             // Get a folder that has Solid Edge files.
-            var folder = new DirectoryInfo(SolidEdgeUtils.GetTrainingFolderPath());
+            var folder = new DirectoryInfo("C:/Users/geevi/Dropbox/strathclyde/strath_stp/stp");
 
             // Get the installed version of Solid Edge.
             var solidEdgeVesion = application.GetVersion();
@@ -34,7 +34,7 @@ namespace OpenClose
             foreach (var file in folder.EnumerateFiles("*.par", SearchOption.AllDirectories))
             {
                 Console.WriteLine(file.FullName);
-
+                
                 // Open the document.
                 var document = (SolidEdgeFramework.SolidEdgeDocument)documents.Open(file.FullName);
 
@@ -63,6 +63,7 @@ namespace OpenClose
 
                     // Starting with ST8, the Documents collection has a CloseDocument() method.
                     documents.CloseDocument(file.FullName, false, Missing.Value, Missing.Value, true);
+                    Console.WriteLine("else statment");
                 }
             }
 
@@ -71,6 +72,8 @@ namespace OpenClose
             // Additional cleanup.
             Marshal.FinalReleaseComObject(documents);
             Marshal.FinalReleaseComObject(application);
+            Console.WriteLine("Finished reading files");
+            Console.Read();
         }
     }
 }

@@ -35,7 +35,7 @@ namespace RibbonCustomization
 
         private void buttonCreateTheme_Click(object sender, EventArgs e)
         {
-            var application = SolidEdgeUtils.Connect(false);
+            var application = SolidEdgeUtils.Connect(true);
             var customization = application.Customization;
             var ribbonBarThemes = customization.RibbonBarThemes;
             SolidEdgeFramework.RibbonBarTheme ribbonBarTheme = null;
