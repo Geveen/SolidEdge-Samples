@@ -418,7 +418,13 @@ namespace DemoAddIn
                 System.Windows.Forms.Application.Run(new Form1());
                 Form1 form2 = new Form1();
                 double dd = form2.Hole_dia;
-                MessageBox.Show("Cancel Hole Dimension?");
+                MessageBox.Show("Cancel diamension?");
+                if (cc == dd)
+                {
+                    MessageBox.Show("invalid argument");
+                    cc = 0.0;
+                    break;
+                }
                 cc = dd;
             }
              
