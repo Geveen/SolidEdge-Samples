@@ -68,20 +68,11 @@
             // Holedia_combo
             // 
             this.Holedia_combo.FormattingEnabled = true;
-            this.Holedia_combo.Items.AddRange(new object[] {
-            "10.0",
-            "15.0",
-            "20.0",
-            "25.0",
-            "30.0",
-            "35.0",
-            "40.0",
-            "45.0",
-            "50.0"});
             this.Holedia_combo.Location = new System.Drawing.Point(12, 15);
             this.Holedia_combo.Name = "Holedia_combo";
             this.Holedia_combo.Size = new System.Drawing.Size(186, 21);
             this.Holedia_combo.TabIndex = 8;
+            this.Holedia_combo.SelectedIndexChanged += new System.EventHandler(this.Holedia_combo_SelectedIndexChanged);
             // 
             // Form1
             // 

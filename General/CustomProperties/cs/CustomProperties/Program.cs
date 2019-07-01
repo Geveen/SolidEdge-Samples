@@ -45,6 +45,7 @@ namespace CustomProperties
             {
                 SolidEdgeCommunity.OleMessageFilter.Unregister();
             }
+            Console.Read();
         }
 
         static void AddCustomProperties(SolidEdgeFramework.PropertySets propertySets)

@@ -9,7 +9,9 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
+using System.Windows.Input;
 
 namespace DemoAddIn
 {
@@ -21,6 +23,8 @@ namespace DemoAddIn
         private RibbonButton _buttonOpenGlBoxes;
         private RibbonButton _buttonGdiPlus;
         private RibbonButton _buttonHole;
+        private RibbonButton _buttonCutout;
+        private RibbonButton _buttonSlot;
         private SolidEdgeCommunity.ConnectionPointController _connectionPointController;
         private static readonly HttpClient _client = new HttpClient();
         private static bool _getting_suggestions = false;
@@ -28,6 +32,10 @@ namespace DemoAddIn
         private static SolidEdgeFramework.Mouse _mouse = null;
         private static SolidEdgeFramework.Application _application = null;
         private static SolidEdgeGeometry.Plane _plane = null;
+        private  MatchCollection matchCollection = null;
+        private int count = 0;
+        private static double[] Match;
+       
 
         public Ribbon3d()
         {
@@ -41,13 +49,17 @@ namespace DemoAddIn
             _buttonBoundingBox = GetButton(20);
             _buttonOpenGlBoxes = GetButton(21);
             _buttonGdiPlus = GetButton(22);
-            _buttonHole = GetButton(5);
+            _buttonHole = GetButton(4);
+            _buttonCutout = GetButton(5);
+            _buttonSlot = GetButton(6);
 
             // Example of how to bind a particular ribbon control click event.
             _buttonBoundingBox.Click += _buttonBoundingBox_Click;
             _buttonOpenGlBoxes.Click += _buttonOpenGlBoxes_Click;
             _buttonGdiPlus.Click += _buttonGdiPlus_Click;
             _buttonHole.Click += _buttonHole_Click;
+            _buttonCutout.Click += _buttoncutout_Click;
+            _buttonSlot.Click += _buttonSlot_Click;
 
             // Get the Solid Edge version.
             var version = DemoAddIn.Instance.SolidEdgeVersion;
@@ -141,8 +153,36 @@ namespace DemoAddIn
             _buttonHole.Checked = !_buttonHole.Checked;
 
             ConnectMouse();
-
+            //_application.StartCommand(SolidEdgeConstants.PartCommandConstants.PartViewLookatFace);
+            
+            
             overlay.ShowOpenHole = _buttonHole.Checked;
+           
+        }
+
+        void _buttoncutout_Click(RibbonControl control)
+        {
+
+            var overlay = GetActiveOverlay();
+
+            _buttonCutout.Checked = !_buttonCutout.Checked;
+
+            ConnectMouse();
+
+            overlay.Showcutout = _buttonCutout.Checked;
+           
+        }
+
+        void _buttonSlot_Click(RibbonControl control)
+        {
+            var overlay = GetActiveOverlay();
+
+            _buttonSlot.Checked = !_buttonSlot.Checked;
+
+            ConnectMouse();
+
+            overlay.ShowSlot = _buttonSlot.Checked;     
+
         }
 
         private void ConnectMouse()
@@ -173,23 +213,13 @@ namespace DemoAddIn
             return overlay;
         }
 
-        async void ISEMouseEvents.MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
-        {
-        }
-
-        async void ISEMouseEvents.MouseUp(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
-        {
-        }
-
-        void ISEMouseEvents.MouseMove(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
-        {
-        }
+       
 
         async void ISEMouseEvents.MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
             try
             {
-                //if (Keyboard.IsKeyDown(Key.LeftShift) && Keyboard.IsKeyDown(Key.S) && !_getting_suggestions)
+
                 //MessageBox.Show($"dx{1000 * dX}, dy{1000 * dY}, dz{1000 * dZ}");
                 _getting_suggestions = true;
 
@@ -201,6 +231,8 @@ namespace DemoAddIn
                 var cc = _doc.Models.Count;
 
                 var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
+                
+                
 
                 Array minparams = new double[2] as Array;
                 Array maxparams = new double[2] as Array;
@@ -231,11 +263,7 @@ namespace DemoAddIn
                 MessageBox.Show($"PointonGraphic {PointOnGraphicFlag}, {PointOnGraphic_X}, {PointOnGraphic_Y}, {PointOnGraphic_Z}");
 
 
-                create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
-
-
-
-
+                // create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
 
                 List<HoleInfo> _holeInfos = new List<HoleInfo>();
 
@@ -247,11 +275,13 @@ namespace DemoAddIn
                     Profile profile = hole.Profile as Profile;
                     Holes2d holes2d = profile.Holes2d as Holes2d;
                     Hole2d hole2d = holes2d.Item(1);
-
+                 
                     double x_2d, y_2d, x_3d, y_3d, z_3d;
                     hole2d.GetCenterPoint(out x_2d, out y_2d);
                     profile.Convert2DCoordinate(x_2d, y_2d, out x_3d, out y_3d, out z_3d);
 
+                    _holeInfo.xd = x_2d * 1000;
+                    _holeInfo.yd = y_2d * 1000;
                     _holeInfo.x = x_3d * 1000;
                     _holeInfo.y = y_3d * 1000;
                     _holeInfo.z = z_3d * 1000;
@@ -356,6 +386,7 @@ namespace DemoAddIn
                     if (Hole_Normal_vector == Face_normal_vector)
                     {
                         add_e += string.Format(", [[\"{0:0.0}\", \"*\"], \"co_dir\"]", H_dest.diameter);
+                        //MessageBox.Show($"2D coordinates {H_dest.xd},{H_dest.yd}");
                     }
 
                     query += add_e;
@@ -363,7 +394,6 @@ namespace DemoAddIn
                 query += "]}";
 
                 MessageBox.Show($"{query}");
-
 
                 //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
                 var values = new Dictionary<string, string> { };
@@ -373,12 +403,43 @@ namespace DemoAddIn
                 var responseString = await response.Content.ReadAsStringAsync();
                 MessageBox.Show(responseString);
 
+                string pattern = @"\d*\.\d";
+                matchCollection = Regex.Matches(responseString, pattern);
+
+                count = matchCollection.Count;
+                Match = new double[count];
+                int i = 0;
+                string match = "";
+
+                foreach (Match m in matchCollection)
+                {
+                    match += string.Format("{0} ", m.Value);
+                    Match[i] = Convert.ToDouble(m.Value);
+                    i++;
+                }
+                // MessageBox.Show($"{match}");
+                
+                create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
                 _getting_suggestions = false;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
-                MessageBox.Show(ex.ToString());
+                MessageBox.Show(ex.Message);
             }
+
+        }
+        public double[] new_match = Match;
+
+        async void ISEMouseEvents.MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+        }
+
+        async void ISEMouseEvents.MouseUp(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+        }
+
+        void ISEMouseEvents.MouseMove(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
         }
 
         void ISEMouseEvents.MouseDblClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
@@ -393,22 +454,26 @@ namespace DemoAddIn
         private void create_hole(double PointOnGraphic_X, double PointOnGraphic_Y, double PointOnGraphic_Z,SolidEdgeGeometry.Face selected_face,
             int[] face_norm,string selected_face_normal)
         {
+            
             // var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
             PartDocument _doc = _application.ActiveDocument as PartDocument;
-            
+           
             RefPlanes refPlanes = null;
             RefPlane refPlane = null;
-
-            //Running windows form application
-            System.Windows.Forms.Application.EnableVisualStyles();
-            System.Windows.Forms.Application.Run(new Form1());
-            
+  
             refPlanes = _doc.RefPlanes;
             //Adding parallel refplane to the selected face 
             refPlane = refPlanes.AddParallelByDistance(selected_face, 0.0, ReferenceElementConstants.igNormalSide, false, false, true, false);
 
+            
+
+            //Running windows form application
+            System.Windows.Forms.Application.EnableVisualStyles();
+            System.Windows.Forms.Application.Run(new Form1());
+
             MessageBox.Show("Cancel Hole Dimension?");
             Form1 form1 = new Form1();
+
             //Hole diameter from user input
             double cc = form1.Hole_dia;
             while(cc < 0.0)
@@ -422,8 +487,7 @@ namespace DemoAddIn
                 if (cc == dd)
                 {
                     MessageBox.Show("invalid argument");
-                    cc = 0.0;
-                    break;
+                    dd = 0.0;   
                 }
                 cc = dd;
             }
@@ -437,7 +501,9 @@ namespace DemoAddIn
             HoleData holeData = null;
             Holes2d holes2D = null;
             Holes holes = null;
-
+            Sketchs sketchs = null;
+            Sketch sketch = null;
+            
 
             Array ref_dir = new double[3] as Array;
 
@@ -449,16 +515,6 @@ namespace DemoAddIn
             refPlane.GetRootPoint(ref root_point);
             var Root_point = root_point as double[];
            
-
-            //Calculating the angle between vectors root_point and global
-            double[] OX = new double[3]
-            {
-                    PointOnGraphic_X - Root_point[0],
-                    PointOnGraphic_Y - Root_point[1],
-                    PointOnGraphic_Z - Root_point[2]
-
-            };
-
             //calculating the cross-product between ref_dir and normal vector
             double[] Ref_dirY = new double[3]
             {
@@ -467,6 +523,23 @@ namespace DemoAddIn
                 Ref_dirX[1] * face_norm[0] - Ref_dirX[0] * face_norm[1]
             };
 
+            double Xcenter = -0.06; //local coordinates
+            double Ycenter = -0.06;
+            //calculating global coordinates from local coordinates
+            double[] X_bar = new double[3]
+            {
+                Xcenter * Ref_dirX[0] + Ycenter * Ref_dirY[0] + Root_point[0],
+                Xcenter * Ref_dirX[1] + Ycenter * Ref_dirY[1] + Root_point[1],
+                Xcenter * Ref_dirX[2] + Ycenter * Ref_dirY[2] + Root_point[2]
+            };
+
+            //Calculating the angle between vectors root_point and global
+            double[] OX = new double[3]
+            {
+                    PointOnGraphic_X - Root_point[0],
+                    PointOnGraphic_Y - Root_point[1],
+                    PointOnGraphic_Z - Root_point[2]
+            };
 
             //calculating the modulus of vector OX
             double OX_Mod = Math.Sqrt(Math.Pow(OX[0], 2) + Math.Pow(OX[1], 2) + Math.Pow(OX[2], 2));
@@ -491,6 +564,7 @@ namespace DemoAddIn
 
             double X_dir = 0.0;
             double Y_dir = 0.0;
+           
 
             if (angleY > Math.PI / 2)
             {
@@ -502,9 +576,18 @@ namespace DemoAddIn
                 X_dir = OX_Mod * Math.Cos(angleX);
                 Y_dir = OX_Mod * Math.Sin(angleX);
             }
-            
+
+            if (OX_Mod == 0.0)
+            {
+                X_dir = 0.0;
+                Y_dir = 0.0;
+            }
+
             if (cc > 0.0)
             {
+                sketchs = _doc.Sketches;
+                sketch = sketchs.Add();
+
                 holeDataCollection = _doc.HoleDataCollection;
 
                 //Defining hole properties
@@ -514,14 +597,19 @@ namespace DemoAddIn
 
                 profileSets = _doc.ProfileSets;
                 profileSet = profileSets.Add();
-                profiles = profileSet.Profiles;
+                //profiles = profileSet.Profiles;
+                profiles = sketch.Profiles;
 
                 profile = profiles.Add(refPlane);
                 holes2D = profile.Holes2d;
 
-                holes2D.Add(X_dir, Y_dir);
+                var dd = holes2D.Add(X_dir, Y_dir);
 
+                
                 profile.End(ProfileValidationType.igProfileClosed);
+                
+                // dd.Move(X_dir, Y_dir, 0.0, 0.0);
+                //_application.StartCommand(SolidEdgeConstants.PartCommandConstants.PartViewLookatFace);
 
                 //getting the hole collection and creating a simple hole
                 Model model = _doc.Models.Item(1);
@@ -530,7 +618,10 @@ namespace DemoAddIn
                     Profile: profile,
                     ProfilePlaneSide: SolidEdgePart.FeaturePropertyConstants.igBoth,
                     Data: holeData);
+                
+
             }
         }
+
     }
 }

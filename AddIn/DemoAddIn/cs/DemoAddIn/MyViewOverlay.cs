@@ -18,6 +18,8 @@ namespace DemoAddIn
         private bool _showOpenGlBoxes = false;
         private bool _showGdiPlus = false;
         private bool _showHole = false;
+        private bool _showcutout = false;
+        private bool _showSlot = false;
 
 
         private SolidEdgeCommunity.ConnectionPointController _connectionPointController;
@@ -452,6 +454,32 @@ namespace DemoAddIn
             
         }
 
+        public bool Showcutout
+        {
+            get
+            {
+                return _showcutout;
+            }
+            set
+            {
+                _showcutout = value;
+                //Force the view to update
+                this.View.Update();
+            }
+        }
+
+        public bool ShowSlot
+        {
+            get { return _showSlot; }
+            set
+            {   _showSlot = value;
+
+                //Force the view to update
+                this.View.Update();
+            }
+
+        }
+        
 
         public void MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {

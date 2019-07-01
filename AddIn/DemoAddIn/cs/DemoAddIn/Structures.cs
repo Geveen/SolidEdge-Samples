@@ -29,5 +29,8 @@ namespace DemoAddIn
         public double x;
         public double y;
         public double z;
+        public double xd;
+        public double yd;
+
     }
 }

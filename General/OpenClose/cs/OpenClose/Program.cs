@@ -26,6 +26,7 @@ namespace OpenClose
             var documents = application.Documents;
 
             // Get a folder that has Solid Edge files.
+            //var folder = new DirectoryInfo("C:/Users/geevi/Documents/Work/Strath_CADfiles/summer work/step files/gate valves/ASAHI YUKIZAI/step files");
             var folder = new DirectoryInfo("C:/Users/geevi/Documents/Work/Strath_CADfiles/test_file");
 
             // Get the installed version of Solid Edge.
@@ -39,7 +40,7 @@ namespace OpenClose
             int k = 1; //part number in a subassembly
 
             // Process the files.
-            foreach (var file in folder.EnumerateFiles("*.step", SearchOption.AllDirectories))
+            foreach (var file in folder.EnumerateFiles("*.stp", SearchOption.AllDirectories))
             {
                 Console.WriteLine(file.FullName);
 
@@ -60,20 +61,20 @@ namespace OpenClose
                
                 int part_count = _doc.Occurrences.Count;
                 var occur = _doc.Occurrences;
-                
+               
                 //if there is more than one part in the assembly doc
-                if (part_count > 1)
-                {
-                    for (int j = 1; j <= part_count; j++)
-                    {
-                        string newfile_name = string.Format($"C:/Users/geevi/Documents/Work/Strath_CADfiles/test_file/Saved_Part_files/Part_{k}.par");
-                        _doc.SaveModelAs(occur.Item(j), newfile_name);
-                        k++;
-                    }
+                 if (part_count > 1)
+                 {
+                     for (int j = 1; j <= part_count; j++)
+                     {
+                         //string newfile_name = string.Format($"C:/Users/geevi/Documents/Work/Strath_CADfiles/test_file/Saved_Part_files/Part_{k}.par");
+                        // _doc.SaveModelAs(occur.Item(j), newfile_name);
+                         k++;
+                     }
 
-                    i++;
-                }
-                
+                     i++;
+                 }
+
 
                 // Prior to ST8, we needed a reference to a document to close it.
                 // That meant that SE can't fully close the document because we're holding a reference.
@@ -104,7 +105,7 @@ namespace OpenClose
                 }
 
                 documents.Close();
-               
+                
             }
 
             application.DisplayAlerts = true;
@@ -115,6 +116,7 @@ namespace OpenClose
             Console.WriteLine("Finished reading files");
             //Console.WriteLine("The K value = {0}",k);
             Console.WriteLine("Number of files with more than one part = {0}", i);
+            
             Console.Read();
         }
     }

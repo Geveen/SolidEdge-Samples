@@ -573,7 +573,6 @@ namespace DemoAddIn
 
         async void ISEMouseEvents.MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
-            
 
         }
 
