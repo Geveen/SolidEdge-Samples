@@ -16,7 +16,7 @@
     <group name="Group2">
       <button id="4" size="large" label="Hole" screentip="Hole Screentip" supertip="Hole Supertip" imageId="117" />
       <button id="5" size="large" label="Cutout" screentip="Cutout Screentip" supertip="Cutout Supertip" imageId="103" />
-      <button id="6" size="large" label="Slots" screentip="Slots Screentip" supertip="Slots Supertip" imageId="105" />
+      <button id="6" size="large" label="Slot" screentip="Slot Screentip" supertip="Slot Supertip" imageId="105" />
       <button id="7" size="large" label="Printer" screentip="Printer Screentip" supertip="Printer Supertip" imageId="112" />
     </group>
     <group name="Group3">

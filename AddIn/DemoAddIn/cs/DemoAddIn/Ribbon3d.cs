@@ -35,6 +35,9 @@ namespace DemoAddIn
         private  MatchCollection matchCollection = null;
         private int count = 0;
         private static double[] Match;
+        private bool checkhole = false;
+        private bool checkcutout = false;
+        private bool checkslot = false;
        
 
         public Ribbon3d()
@@ -155,9 +158,10 @@ namespace DemoAddIn
             ConnectMouse();
             //_application.StartCommand(SolidEdgeConstants.PartCommandConstants.PartViewLookatFace);
             
-            
             overlay.ShowOpenHole = _buttonHole.Checked;
-           
+            checkhole = true;
+            checkslot = false;
+            checkcutout = false;
         }
 
         void _buttoncutout_Click(RibbonControl control)
@@ -170,7 +174,10 @@ namespace DemoAddIn
             ConnectMouse();
 
             overlay.Showcutout = _buttonCutout.Checked;
-           
+            checkhole = false;
+            checkslot = false;
+            checkcutout = true;
+
         }
 
         void _buttonSlot_Click(RibbonControl control)
@@ -181,7 +188,10 @@ namespace DemoAddIn
 
             ConnectMouse();
 
-            overlay.ShowSlot = _buttonSlot.Checked;     
+            overlay.ShowSlot = _buttonSlot.Checked;
+            checkhole = false;
+            checkslot = true;
+            checkcutout = false;
 
         }
 
@@ -217,218 +227,351 @@ namespace DemoAddIn
 
         async void ISEMouseEvents.MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
-            try
+            if (checkhole)
             {
+                try
+                {
 
-                //MessageBox.Show($"dx{1000 * dX}, dy{1000 * dY}, dz{1000 * dZ}");
+                    //MessageBox.Show($"dx{1000 * dX}, dy{1000 * dY}, dz{1000 * dZ}");
+                    _getting_suggestions = true;
+
+                    _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
+
+                    PartDocument _doc = _application.ActiveDocument as PartDocument;
+                    Model _model = _doc.Models.Item(1);
+                    Holes _holes = _model.Holes;
+                    var cc = _holes.Count;
+                    
+                    var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
+
+
+
+                    Array minparams = new double[2] as Array;
+                    Array maxparams = new double[2] as Array;
+                    selected_face.GetParamRange(ref minparams, ref maxparams);
+                    var mins = minparams as double[];
+                    var maxs = maxparams as double[];
+
+                    Array u = new double[2] { mins[0] + 0.5*(maxs[0]-mins[0]),
+                                      mins[1] + 0.5*(maxs[1]-mins[1])};
+
+                    Array n = new double[3] as Array;
+
+                    //getting the normal vector of the selected face
+                    selected_face.GetNormal(1, ref u, ref n);
+                    var norm = n as double[];
+                    int x = (int)Math.Round(norm[0]);
+                    int y = (int)Math.Round(norm[1]);
+                    int z = (int)Math.Round(norm[2]);
+                    int[] face_norm = new int[3]
+                    {
+                     x,y,z
+                    };
+
+                    string Face_normal_vector = string.Format("{0:0}{1:0}{2:0}", x, y, z);
+
+                    //Accessing 3D mouse coordinates 
+                    _mouse.PointOnGraphic(out int PointOnGraphicFlag, out double PointOnGraphic_X, out double PointOnGraphic_Y, out double PointOnGraphic_Z);
+                    MessageBox.Show($"PointonGraphic {PointOnGraphicFlag}, {PointOnGraphic_X}, {PointOnGraphic_Y}, {PointOnGraphic_Z}");
+
+
+                    // create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
+
+                    List<HoleInfo> _holeInfos = new List<HoleInfo>();
+
+                    foreach (Hole hole in _holes)
+                    {
+                        HoleInfo _holeInfo = default(HoleInfo);
+                        SolidEdgePart.HoleData _holedata = hole.HoleData as SolidEdgePart.HoleData;
+                        _holeInfo.diameter = 1000 * _holedata.HoleDiameter;
+                        Profile profile = hole.Profile as Profile;
+                        Holes2d holes2d = profile.Holes2d as Holes2d;
+                        Hole2d hole2d = holes2d.Item(1);
+
+                        double x_2d, y_2d, x_3d, y_3d, z_3d;
+                        hole2d.GetCenterPoint(out x_2d, out y_2d);
+                        profile.Convert2DCoordinate(x_2d, y_2d, out x_3d, out y_3d, out z_3d);
+
+                        _holeInfo.xd = x_2d * 1000;
+                        _holeInfo.yd = y_2d * 1000;
+                        _holeInfo.x = x_3d * 1000;
+                        _holeInfo.y = y_3d * 1000;
+                        _holeInfo.z = z_3d * 1000;
+
+
+                        RefPlane plane = profile.Plane as RefPlane;
+                        Array normals = new double[3] as Array;
+                        plane.GetNormal(ref normals);
+
+                        double[] ns = normals as double[];
+                        _holeInfo.nx = ns[0];
+                        _holeInfo.ny = ns[1];
+                        _holeInfo.nz = ns[2];
+
+                        _holeInfos.Add(_holeInfo);
+                        // MessageBox.Show(string.Format("diam: {0:0.000} x: {1:0.000}, y: {2:0.000}, z: {3:0.000}, nx: {3:0.000}, ny: {3:0.000}, nz: {3:0.000}",
+                        //                            _holeInfo.diameter, _holeInfo.x, _holeInfo.y, _holeInfo.z, _holeInfo.nx, _holeInfo.ny, _holeInfo.nz));
+
+
+                    }
+
+
+                    _holeInfos = _holeInfos.OrderBy(p => p.diameter).ToList();
+
+                    string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [";
+                    bool first = true;
+
+                    //adding the hole diameters to query
+                    foreach (HoleInfo hi in _holeInfos)
+                    {
+                        if (!first)
+                        {
+                            query += ", ";
+                        }
+                        first = false;
+                        string add_v = String.Format("\"{0:0.0}\"", hi.diameter);
+                        query += add_v;
+                    }
+                    query += "], \"e\": [";
+
+
+                    double dist_bucket_size = 50;
+                    int v_source = 0;
+                    first = true;
+                    foreach (HoleInfo hi_source in _holeInfos)
+                    {
+                        int v_dest = 0;
+                        string bucket_dir_source = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_source.nx, hi_source.ny, hi_source.nz);
+                        // MessageBox.Show($"Source {hi_source.x}, {hi_source.y}, {hi_source.z} --- {hi_source.nx}, {hi_source.ny}, {hi_source.nz} ");
+                        // MessageBox.Show($"{bucket_dir_source}");
+                        foreach (HoleInfo hi_dest in _holeInfos)
+                        {
+
+                            if (v_dest > v_source)
+                            {
+                                //MessageBox.Show($"destination {hi_dest.x}, {hi_dest.y}, {hi_dest.z} --- {hi_dest.nx}, {hi_dest.ny}, {hi_dest.nz}");
+                                if (!first)
+                                {
+                                    query += ", ";
+                                }
+                                first = false;
+
+
+                                string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
+                                double e_dist = Math.Sqrt(Math.Pow(hi_source.x - hi_dest.x, 2) + Math.Pow(hi_source.y - hi_dest.y, 2) + Math.Pow(hi_source.z - hi_dest.z, 2));
+                                //MessageBox.Show($"Bucket_dir_dest {bucket_dir_dest}, e_dist {e_dist}");
+                                double e_dist_bucket = Math.Ceiling(e_dist / dist_bucket_size);
+                                //MessageBox.Show($"e_dist_bucket {e_dist_bucket}");
+                                string add_e = string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"{2:0}\"]", hi_source.diameter, hi_dest.diameter, e_dist_bucket);
+                                if (bucket_dir_source == bucket_dir_dest)
+                                {
+                                    add_e += string.Format(",[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
+                                    //add_e += string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
+                                }
+                                query += add_e;
+                            }
+                            v_dest += 1;
+                        }
+                        v_source += 1;
+                    }
+
+                    // query += "]}, \"location\":[[[\"32.0\", \"*\"], \"co_dir\"],";
+                    query += "]}, \"location\": [";
+
+
+
+                    first = true;
+                    //Calculating distance from the mouse location to the hole center points 
+                    foreach (HoleInfo H_dest in _holeInfos)
+                    {
+                        if (!first)
+                        {
+                            query += ", ";
+                        }
+                        first = false;
+
+                        double e_dest = Math.Sqrt(Math.Pow(H_dest.x - (1000 * PointOnGraphic_X), 2) + Math.Pow(H_dest.y - (1000 * PointOnGraphic_Y), 2) + Math.Pow(H_dest.z - (1000 * PointOnGraphic_Z), 2));
+                        double e_dist_bucket = Math.Ceiling(e_dest / dist_bucket_size);
+                        string add_e = string.Format("[[\"{0:0.0}\", \"*\"], \"{1:0}\"]", H_dest.diameter, e_dist_bucket);
+
+                        string Hole_Normal_vector = string.Format("{0:0}{1:0}{2:0}", H_dest.nx, H_dest.ny, H_dest.nz);
+                        if (Hole_Normal_vector == Face_normal_vector)
+                        {
+                            add_e += string.Format(", [[\"{0:0.0}\", \"*\"], \"co_dir\"]", H_dest.diameter);
+                            //MessageBox.Show($"2D coordinates {H_dest.xd},{H_dest.yd}");
+                        }
+
+                        query += add_e;
+                    }
+                    query += "]}";
+
+                    MessageBox.Show($"{query}");
+
+                    //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
+                    var values = new Dictionary<string, string> { };
+
+                    var content = new FormUrlEncodedContent(values);
+                    var response = await _client.GetAsync(query);
+                    var responseString = await response.Content.ReadAsStringAsync();
+                    MessageBox.Show(responseString);
+
+                    string pattern = @"\d*\.\d";
+                    matchCollection = Regex.Matches(responseString, pattern);
+
+                    count = matchCollection.Count;
+                    Match = new double[count];
+                    int i = 0;
+                    string match = "";
+
+                    foreach (Match m in matchCollection)
+                    {
+                        match += string.Format("{0} ", m.Value);
+                        Match[i] = Convert.ToDouble(m.Value);
+                        i++;
+                    }
+                    // MessageBox.Show($"{match}");
+
+                    create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
+                    _getting_suggestions = false;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+            }
+
+            if (checkcutout)
+            {
+                try
+                {
+                    MessageBox.Show("cutout feature selected");
+                    _getting_suggestions = true;
+
+                    _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
+
+                    PartDocument _doc = _application.ActiveDocument as PartDocument;
+                    Model _model = _doc.Models.Item(1);
+                    ExtrudedCutouts _extrudedCutouts = _model.ExtrudedCutouts;
+                    int a = _extrudedCutouts.Count;
+
+                    var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
+
+
+                    Array minparams = new double[2] as Array;
+                    Array maxparams = new double[2] as Array;
+                    selected_face.GetParamRange(ref minparams, ref maxparams);
+                    var mins = minparams as double[];
+                    var maxs = maxparams as double[];
+
+                    Array u = new double[2] { mins[0] + 0.5*(maxs[0]-mins[0]),
+                                      mins[1] + 0.5*(maxs[1]-mins[1])};
+
+                    Array n = new double[3] as Array;
+
+                    //getting the normal vector of the selected face
+                    selected_face.GetNormal(1, ref u, ref n);
+                    var norm = n as double[];
+                    int x = (int)Math.Round(norm[0]);
+                    int y = (int)Math.Round(norm[1]);
+                    int z = (int)Math.Round(norm[2]);
+                    int[] face_norm = new int[3]
+                    {
+                     x,y,z
+                    };
+
+                    string Face_normal_vector = string.Format("{0:0}{1:0}{2:0}", x, y, z);
+
+                    
+
+                    List<CutoutInfo> _Cutoutinfos = new List<CutoutInfo>();
+
+                    foreach(ExtrudedCutout extrudedCutout in _extrudedCutouts)
+                    {
+                        CutoutInfo _cutoutInfo = default(CutoutInfo);
+                        _cutoutInfo.KeyPoints = new List<double>();
+
+                        Profile profile = extrudedCutout.Profile as Profile;
+                        SolidEdgeFrameworkSupport.Lines2d lines2D = profile.Lines2d;
+
+                        double x_3d, y_3d, z_3d, x_3D, y_3D, z_3D;
+                        int handletype;
+                        SolidEdgeFramework.KeyPointType KeyPointType;
+
+                        
+                        int rc = lines2D.Count;
+
+                        for(int j = 1; j <= rc; j++)
+                        {
+                            var ii = lines2D.Item(j);
+                            int keycout = ii.KeyPointCount;
+
+                            for(int i = 0; i < keycout; i++)
+                            {
+                                ii.GetKeyPoint(i, out x_3d, out y_3d, out z_3d, out KeyPointType, out handletype);
+
+                                profile.Convert2DCoordinate(x_3d, y_3d, out x_3D,out y_3D,out z_3D);
+
+                                _cutoutInfo.KeyPoints.Add(x_3D * 1000);
+                                _cutoutInfo.KeyPoints.Add(y_3D * 1000);
+                                _cutoutInfo.KeyPoints.Add(z_3D * 1000);
+
+
+                            }
+                        }
+                        
+                        RefPlane plane = profile.Plane as RefPlane;
+                        Array normals = new double[3] as Array;
+                        plane.GetNormal(ref normals);
+
+                        //getting the normal vector of the cutout profile
+                        double[] ns = normals as double[];
+                        _cutoutInfo.nx = ns[0];
+                        _cutoutInfo.ny = ns[1];
+                        _cutoutInfo.nz = ns[2];
+                       
+
+                        _Cutoutinfos.Add(_cutoutInfo);
+                    }
+
+                    var dd =  _Cutoutinfos[0].KeyPoints[0];
+
+                    foreach(CutoutInfo info in _Cutoutinfos)
+                    {
+                        //MessageBox.Show($"{Math.Round(info.nx)},{Math.Round(info.ny)},{Math.Round(info.nz)}");
+                        string Cutout_normal_vector = string.Format("{0:0}{1:0}{2:0}", Math.Round(info.nx), Math.Round(info.ny), Math.Round(info.nz));
+                        if (Face_normal_vector == Cutout_normal_vector)
+                        {
+                            MessageBox.Show("Co-dir");
+                        }
+                    }
+
+
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("{0}", ex.Message);
+                }
+            }
+
+            if (checkslot)
+            {
+                MessageBox.Show("Slot feature selected");
+
                 _getting_suggestions = true;
 
                 _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
 
                 PartDocument _doc = _application.ActiveDocument as PartDocument;
                 Model _model = _doc.Models.Item(1);
-                Holes _holes = _model.Holes;
-                var cc = _doc.Models.Count;
-
-                var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
+                Slots slots = _model.Slots;
+                int cc = slots.Count;
+                Slot slot = slots.Item(1);
                 
-                
-
-                Array minparams = new double[2] as Array;
-                Array maxparams = new double[2] as Array;
-                selected_face.GetParamRange(ref minparams, ref maxparams);
-                var mins = minparams as double[];
-                var maxs = maxparams as double[];
-
-                Array u = new double[2] { mins[0] + 0.5*(maxs[0]-mins[0]),
-                                      mins[1] + 0.5*(maxs[1]-mins[1])};
-
-                Array n = new double[3] as Array;
-
-                //getting the normal vector of the selected face
-                selected_face.GetNormal(1, ref u, ref n);
-                var norm = n as double[];
-                int x = (int)Math.Round(norm[0]);
-                int y = (int)Math.Round(norm[1]);
-                int z = (int)Math.Round(norm[2]);
-                int[] face_norm = new int[3]
-                {
-                     x,y,z
-                };
-
-                string Face_normal_vector = string.Format("{0:0}{1:0}{2:0}", x, y, z);
-
-                //Accessing 3D mouse coordinates 
-                _mouse.PointOnGraphic(out int PointOnGraphicFlag, out double PointOnGraphic_X, out double PointOnGraphic_Y, out double PointOnGraphic_Z);
-                MessageBox.Show($"PointonGraphic {PointOnGraphicFlag}, {PointOnGraphic_X}, {PointOnGraphic_Y}, {PointOnGraphic_Z}");
-
-
-                // create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
-
-                List<HoleInfo> _holeInfos = new List<HoleInfo>();
-
-                foreach (Hole hole in _holes)
-                {
-                    HoleInfo _holeInfo = default(HoleInfo);
-                    SolidEdgePart.HoleData _holedata = hole.HoleData as SolidEdgePart.HoleData;
-                    _holeInfo.diameter = 1000 * _holedata.HoleDiameter;
-                    Profile profile = hole.Profile as Profile;
-                    Holes2d holes2d = profile.Holes2d as Holes2d;
-                    Hole2d hole2d = holes2d.Item(1);
-                 
-                    double x_2d, y_2d, x_3d, y_3d, z_3d;
-                    hole2d.GetCenterPoint(out x_2d, out y_2d);
-                    profile.Convert2DCoordinate(x_2d, y_2d, out x_3d, out y_3d, out z_3d);
-
-                    _holeInfo.xd = x_2d * 1000;
-                    _holeInfo.yd = y_2d * 1000;
-                    _holeInfo.x = x_3d * 1000;
-                    _holeInfo.y = y_3d * 1000;
-                    _holeInfo.z = z_3d * 1000;
-
-
-                    RefPlane plane = profile.Plane as RefPlane;
-                    Array normals = new double[3] as Array;
-                    plane.GetNormal(ref normals);
-
-                    double[] ns = normals as double[];
-                    _holeInfo.nx = ns[0];
-                    _holeInfo.ny = ns[1];
-                    _holeInfo.nz = ns[2];
-
-                    _holeInfos.Add(_holeInfo);
-                    // MessageBox.Show(string.Format("diam: {0:0.000} x: {1:0.000}, y: {2:0.000}, z: {3:0.000}, nx: {3:0.000}, ny: {3:0.000}, nz: {3:0.000}",
-                    //                            _holeInfo.diameter, _holeInfo.x, _holeInfo.y, _holeInfo.z, _holeInfo.nx, _holeInfo.ny, _holeInfo.nz));
-
-
-                }
-
-
-                _holeInfos = _holeInfos.OrderBy(p => p.diameter).ToList();
-
-                string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [";
-                bool first = true;
-
-                //adding the hole diameters to query
-                foreach (HoleInfo hi in _holeInfos)
-                {
-                    if (!first)
-                    {
-                        query += ", ";
-                    }
-                    first = false;
-                    string add_v = String.Format("\"{0:0.0}\"", hi.diameter);
-                    query += add_v;
-                }
-                query += "], \"e\": [";
-
-
-                double dist_bucket_size = 50;
-                int v_source = 0;
-                first = true;
-                foreach (HoleInfo hi_source in _holeInfos)
-                {
-                    int v_dest = 0;
-                    string bucket_dir_source = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_source.nx, hi_source.ny, hi_source.nz);
-                    // MessageBox.Show($"Source {hi_source.x}, {hi_source.y}, {hi_source.z} --- {hi_source.nx}, {hi_source.ny}, {hi_source.nz} ");
-                    // MessageBox.Show($"{bucket_dir_source}");
-                    foreach (HoleInfo hi_dest in _holeInfos)
-                    {
-
-                        if (v_dest > v_source)
-                        {
-                            //MessageBox.Show($"destination {hi_dest.x}, {hi_dest.y}, {hi_dest.z} --- {hi_dest.nx}, {hi_dest.ny}, {hi_dest.nz}");
-                            if (!first)
-                            {
-                                query += ", ";
-                            }
-                            first = false;
-
-
-                            string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
-                            double e_dist = Math.Sqrt(Math.Pow(hi_source.x - hi_dest.x, 2) + Math.Pow(hi_source.y - hi_dest.y, 2) + Math.Pow(hi_source.z - hi_dest.z, 2));
-                            //MessageBox.Show($"Bucket_dir_dest {bucket_dir_dest}, e_dist {e_dist}");
-                            double e_dist_bucket = Math.Ceiling(e_dist / dist_bucket_size);
-                            //MessageBox.Show($"e_dist_bucket {e_dist_bucket}");
-                            string add_e = string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"{2:0}\"]", hi_source.diameter, hi_dest.diameter, e_dist_bucket);
-                            if (bucket_dir_source == bucket_dir_dest)
-                            {
-                                add_e += string.Format(",[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
-                                //add_e += string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
-                            }
-                            query += add_e;
-                        }
-                        v_dest += 1;
-                    }
-                    v_source += 1;
-                }
-
-                // query += "]}, \"location\":[[[\"32.0\", \"*\"], \"co_dir\"],";
-                query += "]}, \"location\": [";
-
-
-
-                first = true;
-                //Calculating distance from the mouse location to the hole center points 
-                foreach (HoleInfo H_dest in _holeInfos)
-                {
-                    if (!first)
-                    {
-                        query += ", ";
-                    }
-                    first = false;
-
-                    double e_dest = Math.Sqrt(Math.Pow(H_dest.x - (1000 * PointOnGraphic_X), 2) + Math.Pow(H_dest.y - (1000 * PointOnGraphic_Y), 2) + Math.Pow(H_dest.z - (1000 * PointOnGraphic_Z), 2));
-                    double e_dist_bucket = Math.Ceiling(e_dest / dist_bucket_size);
-                    string add_e = string.Format("[[\"{0:0.0}\", \"*\"], \"{1:0}\"]", H_dest.diameter, e_dist_bucket);
-
-                    string Hole_Normal_vector = string.Format("{0:0}{1:0}{2:0}", H_dest.nx, H_dest.ny, H_dest.nz);
-                    if (Hole_Normal_vector == Face_normal_vector)
-                    {
-                        add_e += string.Format(", [[\"{0:0.0}\", \"*\"], \"co_dir\"]", H_dest.diameter);
-                        //MessageBox.Show($"2D coordinates {H_dest.xd},{H_dest.yd}");
-                    }
-
-                    query += add_e;
-                }
-                query += "]}";
-
-                MessageBox.Show($"{query}");
-
-                //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
-                var values = new Dictionary<string, string> { };
-
-                var content = new FormUrlEncodedContent(values);
-                var response = await _client.GetAsync(query);
-                var responseString = await response.Content.ReadAsStringAsync();
-                MessageBox.Show(responseString);
-
-                string pattern = @"\d*\.\d";
-                matchCollection = Regex.Matches(responseString, pattern);
-
-                count = matchCollection.Count;
-                Match = new double[count];
-                int i = 0;
-                string match = "";
-
-                foreach (Match m in matchCollection)
-                {
-                    match += string.Format("{0} ", m.Value);
-                    Match[i] = Convert.ToDouble(m.Value);
-                    i++;
-                }
-                // MessageBox.Show($"{match}");
-                
-                create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
-                _getting_suggestions = false;
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-
         }
+
         public double[] new_match = Match;
+
 
         async void ISEMouseEvents.MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
