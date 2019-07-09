@@ -457,6 +457,7 @@ namespace DemoAddIn
                     var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
 
 
+
                     Array minparams = new double[2] as Array;
                     Array maxparams = new double[2] as Array;
                     selected_face.GetParamRange(ref minparams, ref maxparams);
@@ -480,8 +481,6 @@ namespace DemoAddIn
                     };
 
                     string Face_normal_vector = string.Format("{0:0}{1:0}{2:0}", x, y, z);
-
-                    
 
                     List<CutoutInfo> _Cutoutinfos = new List<CutoutInfo>();
 
@@ -565,8 +564,92 @@ namespace DemoAddIn
                 Model _model = _doc.Models.Item(1);
                 Slots slots = _model.Slots;
                 int cc = slots.Count;
-                Slot slot = slots.Item(1);
-                
+
+                var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
+
+                Array minparams = new double[2] as Array;
+                Array maxparams = new double[2] as Array;
+                selected_face.GetParamRange(ref minparams, ref maxparams);
+                var mins = minparams as double[];
+                var maxs = maxparams as double[];
+
+                Array u = new double[2] { mins[0] + 0.5*(maxs[0]-mins[0]),
+                                      mins[1] + 0.5*(maxs[1]-mins[1])};
+
+                Array n = new double[3] as Array;
+
+                //getting the normal vector of the selected face
+                selected_face.GetNormal(1, ref u, ref n);
+                var norm = n as double[];
+                int x = (int)Math.Round(norm[0]);
+                int y = (int)Math.Round(norm[1]);
+                int z = (int)Math.Round(norm[2]);
+                int[] face_norm = new int[3]
+                {
+                     x,y,z
+                };
+
+                string Face_normal_vector = string.Format("{0:0}{1:0}{2:0}", x, y, z);
+
+
+                List<Slotinfo> _Slotinfos = new List<Slotinfo>();
+
+                foreach (Slot slot in slots)
+                {
+                    Slotinfo _SlotInfo = default(Slotinfo);
+                    _SlotInfo.KeyPoints = new List<double>();
+
+                    Profile profile = slot.Profile as Profile;
+                    SolidEdgeFrameworkSupport.Lines2d lines2D = profile.Lines2d;
+                    int lincount = lines2D.Count;
+                    double x_3d, y_3d, z_3d, x_3D, y_3D, z_3D;
+                    int handletype;
+                    SolidEdgeFramework.KeyPointType KeyPointType;
+
+
+                    int rc = lines2D.Count;
+
+                    for (int j = 1; j <= rc; j++)
+                    {
+                        var ii = lines2D.Item(j);
+                        int keycout = ii.KeyPointCount;
+
+                        for (int i = 0; i < keycout; i++)
+                        {
+                            ii.GetKeyPoint(i, out x_3d, out y_3d, out z_3d, out KeyPointType, out handletype);
+
+                            profile.Convert2DCoordinate(x_3d, y_3d, out x_3D, out y_3D, out z_3D);
+
+                            _SlotInfo.KeyPoints.Add(x_3D * 1000);
+                            _SlotInfo.KeyPoints.Add(y_3D * 1000);
+                            _SlotInfo.KeyPoints.Add(z_3D * 1000);
+
+
+                        }
+                    }
+
+                    RefPlane plane = profile.Plane as RefPlane;
+                    Array normals = new double[3] as Array;
+                    plane.GetNormal(ref normals);
+
+                    //getting the normal vector of the cutout profile
+                    double[] ns = normals as double[];
+                    _SlotInfo.nx = ns[0];
+                    _SlotInfo.ny = ns[1];
+                    _SlotInfo.nz = ns[2];
+
+                    _Slotinfos.Add(_SlotInfo);
+                }
+                var dd = _Slotinfos[0].KeyPoints[0];
+
+                foreach(Slotinfo info in _Slotinfos)
+                {
+                    string Slot_normal_vector = string.Format("{0:0}{1:0}{2:0}", Math.Round(info.nx), Math.Round(info.ny), Math.Round(info.nz));
+                    if (Face_normal_vector == Slot_normal_vector)
+                    {
+                        MessageBox.Show("Co-dir");
+                    }
+                }
             }
         }
 
@@ -765,6 +848,7 @@ namespace DemoAddIn
 
             }
         }
+
 
     }
 }
