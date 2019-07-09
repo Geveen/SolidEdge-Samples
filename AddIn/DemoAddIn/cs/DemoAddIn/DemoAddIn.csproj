@@ -94,6 +94,12 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.Designer.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </Compile>
     <Compile Include="Ribbon2d.cs" />
     <Compile Include="DemoAddIn.cs" />
     <Compile Include="MyCustomDialog.cs">
@@ -121,6 +127,9 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="Form1.resx">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="MyCustomDialog.resx">
       <DependentUpon>MyCustomDialog.cs</DependentUpon>
     </EmbeddedResource>
@@ -143,10 +152,13 @@
     <Content Include="res\Camera_32x32.png" />
     <Content Include="res\CommandPrompt_32x32.png" />
     <Content Include="res\EdgeBar_20x20.png" />
+    <Content Include="res\Cutout_32x32.png" />
     <Content Include="res\Favorites_32x32.png" />
     <Content Include="res\Folder_16x16.png" />
     <Content Include="res\GdiPlus_32.png" />
     <Content Include="res\Help_32x32.png" />
+    <Content Include="res\hole_32x32.png" />
+    <Content Include="res\Slot_32x32.png" />
     <Content Include="res\Monitor_16x16.png" />
     <Content Include="res\Notepad_32x32.png" />
     <Content Include="res\Photograph_32x32.png" />

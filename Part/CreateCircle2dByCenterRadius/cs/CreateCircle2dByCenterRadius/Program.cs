@@ -76,6 +76,8 @@ namespace CreateCircle2dByCenterRadius
 
                 // Switch to ISO view.
                 application.StartCommand(SolidEdgeConstants.PartCommandConstants.PartViewISOView);
+               
+               
             }
             catch (System.Exception ex)
             {

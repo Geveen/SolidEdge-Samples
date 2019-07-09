@@ -43,6 +43,7 @@ namespace ReportEnvironments
             {
                 SolidEdgeCommunity.OleMessageFilter.Unregister();
             }
+            Console.Read();
         }
     }
 }

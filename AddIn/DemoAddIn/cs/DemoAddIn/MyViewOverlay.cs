@@ -1,17 +1,34 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Globalization;
 using System.Drawing;
-using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using SolidEdgePart;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+
 
 namespace DemoAddIn
 {
-    class MyViewOverlay : SolidEdgeCommunity.AddIn.ViewOverlay
+    class MyViewOverlay : SolidEdgeCommunity.AddIn.ViewOverlay,
+                          SolidEdgeFramework.ISEMouseEvents
     {
         private BoundingBoxInfo _boundingBoxInfo = default(BoundingBoxInfo);
         private bool _showOpenGlBoxes = false;
         private bool _showGdiPlus = false;
+        private bool _showHole = false;
+        private bool _showcutout = false;
+        private bool _showSlot = false;
+
+
+        private SolidEdgeCommunity.ConnectionPointController _connectionPointController;
+        private static readonly HttpClient _client = new HttpClient();
+        private static bool _getting_suggestions = false;
+        private static SolidEdgeFramework.Command _cmd = null;
+        private static SolidEdgeFramework.Mouse _mouse = null;
+        private static SolidEdgeFramework.Application _application = null;
+        
 
         public MyViewOverlay()
         {
@@ -79,6 +96,7 @@ namespace DemoAddIn
 
         public override void EndDeviceContextMainDisplay(IntPtr hDC, ref double modelToDC, ref int rect)
         {
+            
             if (_showGdiPlus)
             {
                 //Demonstrate using GDI+ to write text on the device context (DC).
@@ -123,7 +141,11 @@ namespace DemoAddIn
 
                 }
             }
+
         }
+
+       
+        
 
         private void DrawBoundingBox(SolidEdgeSDK.IGL gl)
         {
@@ -378,6 +400,7 @@ namespace DemoAddIn
                 gl.glEnd();
             }
         }
+      
 
         public bool ShowBoundingBox
         {
@@ -413,6 +436,93 @@ namespace DemoAddIn
                 // Force the view to update.
                 this.View.Update();
             }
+        }
+
+        public bool ShowOpenHole
+        {
+            get
+            {
+                return _showHole;
+            }
+            set
+            {
+                _showHole = value;
+
+                //Force the view to update
+                this.View.Update();
+            }
+            
+        }
+
+        public bool Showcutout
+        {
+            get
+            {
+                return _showcutout;
+            }
+            set
+            {
+                _showcutout = value;
+                //Force the view to update
+                this.View.Update();
+            }
+        }
+
+        public bool ShowSlot
+        {
+            get { return _showSlot; }
+            set
+            {   _showSlot = value;
+
+                //Force the view to update
+                this.View.Update();
+            }
+
+        }
+        
+
+        public void MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+            
+        }
+
+        public void MouseUp(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+            
+        }
+
+        public void MouseMove(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+          
+        }
+
+        public void MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+            
+        }
+
+        public void MouseDblClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        {
+            
+        }
+
+        public void MouseDrag(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, short DragState, int lKeyPointType, object pGraphicDispatch)
+        {
+            
+        }
+
+        private void ConnectMouse()
+        {
+            _cmd = (SolidEdgeFramework.Command)_application.CreateCommand((int)SolidEdgeConstants.seCmdFlag.seNoDeactivate);
+            _mouse = (SolidEdgeFramework.Mouse)_cmd.Mouse;
+            _cmd.Start();
+            _mouse.EnabledMove = true;
+            _mouse.LocateMode = (int)SolidEdgeConstants.seLocateModes.seLocateSimple;
+            _mouse.ScaleMode = 1;   // Design model coordinates.
+            _mouse.WindowTypes = 1; // Graphic window's only.
+            _mouse.AddToLocateFilter(32);
+            _connectionPointController.AdviseSink<SolidEdgeFramework.ISEMouseEvents>(_mouse);
+
         }
     }
 }

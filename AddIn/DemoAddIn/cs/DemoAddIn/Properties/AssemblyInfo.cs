@@ -7,9 +7,9 @@ using System.Runtime.InteropServices;
 [assembly: NativeResource(100, @"res\BoundingBox_32.png")]
 [assembly: NativeResource(101, @"res\Box_32x32.png")]
 [assembly: NativeResource(102, @"res\Boxes_32.png")]
-[assembly: NativeResource(103, @"res\Camera_32x32.png")]
+[assembly: NativeResource(103, @"res\Cutout_32x32.png")]
 [assembly: NativeResource(104, @"res\CommandPrompt_32x32.png")]
-[assembly: NativeResource(105, @"res\Favorites_32x32.png")]
+[assembly: NativeResource(105, @"res\Slot_32x32.png")]
 [assembly: NativeResource(106, @"res\Folder_16x16.png")]
 [assembly: NativeResource(107, @"res\GdiPlus_32.png")]
 [assembly: NativeResource(108, @"res\Help_32x32.png")]
@@ -21,6 +21,7 @@ using System.Runtime.InteropServices;
 [assembly: NativeResource(114, @"res\Save_16x16.png")]
 [assembly: NativeResource(115, @"res\Search_32x32.png")]
 [assembly: NativeResource(116, @"res\Tools_32x32.png")]
+[assembly: NativeResource(117, @"res\hole_32x32.png")]
 
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information

@@ -29,5 +29,20 @@ namespace DemoAddIn
         public double x;
         public double y;
         public double z;
+        public double xd;
+        public double yd;
+
+    }
+
+    struct CutoutInfo
+    {
+        public List<double> KeyPoints;
+        public double x;
+        public double y;
+        public double z;
+        public double nx;
+        public double ny;
+        public double nz;
+
     }
 }

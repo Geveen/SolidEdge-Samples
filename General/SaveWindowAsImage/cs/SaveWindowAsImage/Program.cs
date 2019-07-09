@@ -1,5 +1,6 @@
 ﻿using SolidEdgeCommunity.Extensions; // https://github.com/SolidEdgeCommunity/SolidEdge.Community/wiki/Using-Extension-Methods
 using System;
+using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,8 +21,8 @@ namespace SaveWindowAsImage
                 SolidEdgeCommunity.OleMessageFilter.Register();
 
                 // Connect to Solid Edge.
-                application = SolidEdgeCommunity.SolidEdgeUtils.Start();
-
+                // application = SolidEdgeCommunity.SolidEdgeUtils.Start();
+                application = SolidEdgeCommunity.SolidEdgeUtils.Connect(true, true);
                 // 3D windows are of type SolidEdgeFramework.Window.
                 window = application.ActiveWindow as SolidEdgeFramework.Window;
 
@@ -77,6 +78,7 @@ namespace SaveWindowAsImage
             {
                 SolidEdgeCommunity.OleMessageFilter.Unregister();
             }
+            Console.ReadKey();
         }
     }
 }

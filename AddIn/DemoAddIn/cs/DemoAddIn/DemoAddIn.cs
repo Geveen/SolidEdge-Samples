@@ -19,7 +19,7 @@ using SolidEdgeFramework;
 using System.Windows.Input;
 using System.Net.Http;
 using SolidEdgePart;
-using SolidEdgeGeometry;
+
 
 namespace DemoAddIn
 {
@@ -36,6 +36,7 @@ namespace DemoAddIn
         SolidEdgeFramework.ISEECEvents, // Solid Edge EC Events
         SolidEdgeFramework.ISEShortCutMenuEvents, // Solid Edge Shortcut Menu Events
         SolidEdgeFramework.ISEMouseEvents // Solid Edge Mouse Events
+        
     {
         private SolidEdgeCommunity.ConnectionPointController _connectionPointController;
         private static readonly HttpClient _client = new HttpClient();
@@ -43,6 +44,8 @@ namespace DemoAddIn
         private static SolidEdgeFramework.Command _cmd = null;
         private static SolidEdgeFramework.Mouse _mouse = null;
         private static SolidEdgeFramework.Application _application = null;
+       
+
         #region SolidEdgeCommunity.AddIn.SolidEdgeAddIn overrides
 
         /// <summary>
@@ -51,17 +54,17 @@ namespace DemoAddIn
         public override void OnConnection(SolidEdgeFramework.Application application, SolidEdgeFramework.SeConnectMode ConnectMode, SolidEdgeFramework.AddIn AddInInstance)
         {
             _application = application;
-            
+
             // If you makes changes to your ribbon, be sure to increment the GuiVersion or your ribbon
             // will not initialize properly.
             AddInEx.GuiVersion = 1;
-
+            //krkmfkrnkj
             // Create an instance of the default connection point controller. It helps manage connections to COM events.
             _connectionPointController = new SolidEdgeCommunity.ConnectionPointController(this);
 
             // Uncomment the following line to attach to the Solid Edge Application Events.
             _connectionPointController.AdviseSink<SolidEdgeFramework.ISEApplicationEvents>(this.Application);
-
+            
             // Not necessary unless you absolutely need to see low level windows messages.
             // Uncomment the following line to attach to the Solid Edge Application Window Events.
             //_connectionPointController.AdviseSink<SolidEdgeFramework.ISEApplicationWindowEvents>(this.Application);
@@ -89,10 +92,11 @@ namespace DemoAddIn
         public override void OnConnectToEnvironment(SolidEdgeFramework.Environment environment, bool firstTime)
         {
             if (environment.GetCategoryId().Equals(SolidEdgeSDK.EnvironmentCategories.Part))
-            {// Uncomment the following line to attach to the Solid Edge Mouse Events.
+            {   // Uncomment the following line to attach to the Solid Edge Mouse Events.
                 _cmd = (SolidEdgeFramework.Command)_application.CreateCommand((int)SolidEdgeConstants.seCmdFlag.seNoDeactivate);
                 _cmd.Start();
                 ConnectMouse();
+                
             }
         }
 
@@ -162,6 +166,11 @@ namespace DemoAddIn
                 controller.Add<Ribbon3d>(environmentCategory, firstTime);
             }
             else if (environmentCategory.Equals(SolidEdgeSDK.EnvironmentCategories.DMSheetMetal))
+            {
+                // Synchronous SheetMetal Environment
+                controller.Add<Ribbon3d>(environmentCategory, firstTime);
+            }
+            else if (environmentCategory.Equals(SolidEdgeSDK.EnvironmentCategories.Sketch))
             {
                 // Synchronous SheetMetal Environment
                 controller.Add<Ribbon3d>(environmentCategory, firstTime);
@@ -254,7 +263,7 @@ namespace DemoAddIn
         {
             if (theCommandID == 10307)
             {
-                ConnectMouse();
+                //ConnectMouse();
             }
         }
 
@@ -548,146 +557,51 @@ namespace DemoAddIn
         #region Mouse Events
         async void ISEMouseEvents.MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
-            //if (Keyboard.IsKeyDown(Key.LeftShift) && Keyboard.IsKeyDown(Key.S) && !_getting_suggestions)
-            //{
-                _getting_suggestions = true;
 
-                var _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
-
-                PartDocument _doc = _application.ActiveDocument as PartDocument;
-                Model _model = _doc.Models.Item(1);
-                Holes _holes = _model.Holes;
-
-                
-
-                List<HoleInfo> _holeInfos = new List<HoleInfo>();
-
-                foreach (Hole hole in _holes)
-                {
-                    HoleInfo _holeInfo = default(HoleInfo);
-                    SolidEdgePart.HoleData _holedata = hole.HoleData as SolidEdgePart.HoleData;
-                    _holeInfo.diameter = 1000 * _holedata.HoleDiameter;
-                    Profile profile = hole.Profile as Profile;
-                    Holes2d holes2d = profile.Holes2d as Holes2d;
-                    Hole2d hole2d = holes2d.Item(1);
-
-                    double x_2d, y_2d, x_3d, y_3d, z_3d;
-                    hole2d.GetCenterPoint(out x_2d, out y_2d);
-                    profile.Convert2DCoordinate(x_2d, y_2d, out x_3d, out y_3d, out z_3d);
-
-                    _holeInfo.x = x_3d;
-                    _holeInfo.y = y_3d;
-                    _holeInfo.z = z_3d;
-
-
-                    RefPlane plane = profile.Plane as RefPlane;
-                    Array normals = new double[3] as Array;
-                    plane.GetNormal(ref normals);
-
-                    double[] ns = normals as double[];
-                    _holeInfo.nx = ns[0];
-                    _holeInfo.ny = ns[1];
-                    _holeInfo.nz = ns[2];
-
-                    _holeInfos.Add(_holeInfo);
-                    MessageBox.Show(string.Format("diam: {0:0.000} x: {1:0.000}, y: {2:0.000}, z: {3:0.000}, nx: {3:0.000}, ny: {3:0.000}, nz: {3:0.000}", _holeInfo.diameter,
-                                                                                                                                                           _holeInfo.x,
-                                                                                                                                                           _holeInfo.y,
-                                                                                                                                                           _holeInfo.z,
-                                                                                                                                                           _holeInfo.nx,
-                                                                                                                                                           _holeInfo.ny,
-                                                                                                                                                           _holeInfo.nz));
-                }
-
-                _holeInfos = _holeInfos.OrderBy(p => p.diameter).ToList();
-
-                string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [";
-                bool first = true;
-                foreach (HoleInfo hi in _holeInfos)
-                {
-                    if (!first)
-                    {
-                        query += ", ";
-                    }
-                    first = false;
-                    string add_v = String.Format("\"{0:0.0}\"", hi.diameter);
-                    query += add_v;
-                }
-                query += "], \"e\": [";
-
-                int v_source = 0;
-                first = true;
-                foreach (HoleInfo hi_source in _holeInfos)
-                {
-                    int v_dest = 0;
-                    string bucket_dir_source = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_source.nx, hi_source.ny, hi_source.nz);
-                    foreach (HoleInfo hi_dest in _holeInfos)
-                    {
-                        if (v_dest > v_source)
-                        {
-                            if (!first)
-                            {
-                                query += ", ";
-                            }
-                            first = false;
-
-                            double dist_bucket_size = 50;
-                            string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
-                            double e_dist = Math.Sqrt(Math.Pow(hi_source.x - hi_dest.x, 2) + Math.Pow(hi_source.y - hi_dest.y, 2) + Math.Pow(hi_source.z - hi_dest.z, 2));
-                            double e_dist_bucket = Math.Ceiling(e_dist / dist_bucket_size);
-                            string add_e = string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"{2:0}\"]", hi_source.diameter, hi_dest.diameter, e_dist_bucket);
-                            if (bucket_dir_source == bucket_dir_dest)
-                            {
-                                add_e += string.Format(",[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
-                                //add_e += string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
-                            }
-                            query += add_e;
-                        }
-                        v_dest += 1;
-                    }
-                    v_source += 1;
-                }
-                query += "]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
-
-                int PointOnGraphicFlag;
-                double PointOnGraphic_X;
-                double PointOnGraphic_Y;
-                double PointOnGraphic_Z;
-                _mouse.PointOnGraphic(out PointOnGraphicFlag, out PointOnGraphic_X, out PointOnGraphic_Y, out PointOnGraphic_Z);
-
-                //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
-                var values = new Dictionary<string, string> { };
-
-                var content = new FormUrlEncodedContent(values);
-                var response = await _client.GetAsync(query);
-                var responseString = await response.Content.ReadAsStringAsync();
-                MessageBox.Show(responseString);
-                _getting_suggestions = false;
-            //}
         }
 
-        void ISEMouseEvents.MouseUp(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        async void ISEMouseEvents.MouseUp(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
+            
+
         }
 
         async void ISEMouseEvents.MouseMove(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
-            
+
         }
 
-        void ISEMouseEvents.MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
+        async void ISEMouseEvents.MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
+
         }
 
         void ISEMouseEvents.MouseDblClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
+
         }
 
         void ISEMouseEvents.MouseDrag(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, short DragState, int lKeyPointType, object pGraphicDispatch)
         {
+
         }
 
         #endregion
+
+       
+        private void ConnectMouse()
+        {
+            _cmd = (SolidEdgeFramework.Command)_application.CreateCommand((int)SolidEdgeConstants.seCmdFlag.seNoDeactivate);
+            _mouse = (SolidEdgeFramework.Mouse)_cmd.Mouse;
+            _cmd.Start();
+            _mouse.EnabledMove = true;
+            _mouse.LocateMode = (int)SolidEdgeConstants.seLocateModes.seLocateSimple;
+            _mouse.ScaleMode = 1;   // Design model coordinates.
+            _mouse.WindowTypes = 1; // Graphic window's only.
+            _mouse.AddToLocateFilter(32);
+            _connectionPointController.AdviseSink<SolidEdgeFramework.ISEMouseEvents>(_mouse);
+            
+        }
 
         #region RegAsm.exe callbacks
 
@@ -743,17 +657,8 @@ namespace DemoAddIn
         }
         #endregion
 
-        private void ConnectMouse()
-        {
-            _cmd = (SolidEdgeFramework.Command)_application.CreateCommand((int)SolidEdgeConstants.seCmdFlag.seNoDeactivate);
-            _mouse = (SolidEdgeFramework.Mouse)_cmd.Mouse;
-            _cmd.Start();
-            _mouse.EnabledMove = true;
-            _mouse.LocateMode = (int)SolidEdgeConstants.seLocateModes.seSmartLocate;
-            _mouse.ScaleMode = 1;   // Design model coordinates.
-            _mouse.WindowTypes = 1; // Graphic window's only.
-            _connectionPointController.AdviseSink<SolidEdgeFramework.ISEMouseEvents>(_mouse);
-        }
+       
     }
+    
     
 }
