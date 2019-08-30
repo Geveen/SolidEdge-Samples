@@ -45,4 +45,16 @@ namespace DemoAddIn
         public double nz;
 
     }
+
+    struct Slotinfo
+    {
+        public List<double> KeyPoints;
+        public double x;
+        public double y;
+        public double z;
+        public double nx;
+        public double ny;
+        public double nz;
+
+    }
 }

@@ -1,6 +1,7 @@
 ﻿using SolidEdgeCommunity.AddIn;
 using SolidEdgeCommunity.Extensions; // https://github.com/SolidEdgeCommunity/SolidEdge.Community/wiki/Using-Extension-Methods
 using SolidEdgeFramework;
+using SolidEdgeFrameworkSupport;
 using SolidEdgePart;
 using System;
 using System.Collections.Generic;
@@ -444,7 +445,7 @@ namespace DemoAddIn
             {
                 try
                 {
-                    MessageBox.Show("cutout feature selected");
+                    //MessageBox.Show("cutout feature selected");
                     _getting_suggestions = true;
 
                     _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
@@ -455,6 +456,7 @@ namespace DemoAddIn
                     int a = _extrudedCutouts.Count;
 
                     var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
+
 
 
                     Array minparams = new double[2] as Array;
@@ -481,7 +483,8 @@ namespace DemoAddIn
 
                     string Face_normal_vector = string.Format("{0:0}{1:0}{2:0}", x, y, z);
 
-                    
+                    //Accessing 3D mouse coordinates 
+                    _mouse.PointOnGraphic(out int PointOnGraphicFlag, out double PointOnGraphic_X, out double PointOnGraphic_Y, out double PointOnGraphic_Z);
 
                     List<CutoutInfo> _Cutoutinfos = new List<CutoutInfo>();
 
@@ -546,27 +549,126 @@ namespace DemoAddIn
                     }
 
 
+                    Create_Cutout(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
+
+
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("{0}", ex.Message);
+                    MessageBox.Show(ex.Message);
                 }
             }
 
             if (checkslot)
             {
-                MessageBox.Show("Slot feature selected");
+                try
+                {
+                   // MessageBox.Show("Slot feature selected");
 
-                _getting_suggestions = true;
+                    _getting_suggestions = true;
 
-                _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
+                    _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
 
-                PartDocument _doc = _application.ActiveDocument as PartDocument;
-                Model _model = _doc.Models.Item(1);
-                Slots slots = _model.Slots;
-                int cc = slots.Count;
-                Slot slot = slots.Item(1);
-                
+                    PartDocument _doc = _application.ActiveDocument as PartDocument;
+                    Model _model = _doc.Models.Item(1);
+                    Slots slots = _model.Slots;
+                    int cc = slots.Count;
+
+                    var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
+
+                    Array minparams = new double[2] as Array;
+                    Array maxparams = new double[2] as Array;
+                    selected_face.GetParamRange(ref minparams, ref maxparams);
+                    var mins = minparams as double[];
+                    var maxs = maxparams as double[];
+
+                    Array u = new double[2] { mins[0] + 0.5*(maxs[0]-mins[0]),
+                                      mins[1] + 0.5*(maxs[1]-mins[1])};
+
+                    Array n = new double[3] as Array;
+
+                    //getting the normal vector of the selected face
+                    selected_face.GetNormal(1, ref u, ref n);
+                    var norm = n as double[];
+                    int x = (int)Math.Round(norm[0]);
+                    int y = (int)Math.Round(norm[1]);
+                    int z = (int)Math.Round(norm[2]);
+                    int[] face_norm = new int[3]
+                    {
+                     x,y,z
+                    };
+
+                    string Face_normal_vector = string.Format("{0:0}{1:0}{2:0}", x, y, z);
+
+                    //Accessing 3D mouse coordinates 
+                    _mouse.PointOnGraphic(out int PointOnGraphicFlag, out double PointOnGraphic_X, out double PointOnGraphic_Y, out double PointOnGraphic_Z);
+
+                    List<Slotinfo> _Slotinfos = new List<Slotinfo>();
+
+                    foreach (Slot slot in slots)
+                    {
+                        Slotinfo _SlotInfo = default(Slotinfo);
+                        _SlotInfo.KeyPoints = new List<double>();
+
+                        Profile profile = slot.Profile as Profile;
+                        Lines2d lines2D = profile.Lines2d;
+                        int lincount = lines2D.Count;
+                        double x_3d, y_3d, z_3d, x_3D, y_3D, z_3D;
+                        int handletype;
+                        KeyPointType KeyPointType;
+
+
+                        int rc = lines2D.Count;
+
+                        for (int j = 1; j <= rc; j++)
+                        {
+                            var ii = lines2D.Item(j);
+                            int keycout = ii.KeyPointCount;
+
+                            for (int i = 0; i < keycout; i++)
+                            {
+                                ii.GetKeyPoint(i, out x_3d, out y_3d, out z_3d, out KeyPointType, out handletype);
+
+                                profile.Convert2DCoordinate(x_3d, y_3d, out x_3D, out y_3D, out z_3D);
+
+                                _SlotInfo.KeyPoints.Add(x_3D * 1000);
+                                _SlotInfo.KeyPoints.Add(y_3D * 1000);
+                                _SlotInfo.KeyPoints.Add(z_3D * 1000);
+
+
+                            }
+                        }
+
+                        RefPlane plane = profile.Plane as RefPlane;
+                        Array normals = new double[3] as Array;
+                        plane.GetNormal(ref normals);
+
+                        //getting the normal vector of the cutout profile
+                        double[] ns = normals as double[];
+                        _SlotInfo.nx = ns[0];
+                        _SlotInfo.ny = ns[1];
+                        _SlotInfo.nz = ns[2];
+
+                        _Slotinfos.Add(_SlotInfo);
+                    }
+                    var dd = _Slotinfos[0].KeyPoints[0];
+
+                    foreach (Slotinfo info in _Slotinfos)
+                    {
+                        //Comparing the normal vector of the face to the slot normal vector
+                        string Slot_normal_vector = string.Format("{0:0}{1:0}{2:0}", Math.Round(info.nx), Math.Round(info.ny), Math.Round(info.nz));
+                        if (Face_normal_vector == Slot_normal_vector)
+                        {
+                            MessageBox.Show("Co-dir");
+                        }
+                    }
+
+                    Create_Slot(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
+                }
+                catch(Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
             }
         }
 
@@ -766,5 +868,136 @@ namespace DemoAddIn
             }
         }
 
+
+        //creates a slot
+        private void Create_Slot(double PointOnGraphic_X, double PointOnGraphic_Y, double PointOnGraphic_Z, SolidEdgeGeometry.Face selected_face,
+            int[] face_norm, string selected_face_normal)
+        {
+            PartDocument _doc = _application.ActiveDocument as PartDocument;
+
+            RefPlanes refPlanes = null;
+            RefPlane refPlane = null;
+
+            refPlanes = _doc.RefPlanes;
+            //Adding a parallel refplane to the selected face
+            refPlane = refPlanes.AddParallelByDistance(selected_face, 0.0, ReferenceElementConstants.igNormalSide, false, false, true, false);
+
+            ProfileSets profileSets = null;
+            ProfileSet profileSet = null;
+            Profiles profiles = null;
+            Profile profile = null;
+            Lines2d lines2D = null;
+            Models models = null;
+            Model model = null;
+            Sketchs sketchs = null;
+            Sketch sketch = null;
+            Slots slots = null;
+            Slot slot = null;
+
+            sketchs = _doc.Sketches;
+            sketch = sketchs.Add();
+
+            profileSets = _doc.ProfileSets;
+            profileSet = profileSets.Add();
+            profiles = sketch.Profiles;
+
+            //Adding the refplane to the profile
+            profile = profiles.Add(refPlane);
+            lines2D = profile.Lines2d;
+             
+            
+            lines2D.AddBy2Points(0.02, 0, 0.02, 0.02);
+            
+            profile.End(ProfileValidationType.igProfileClosed);
+
+            models = _doc.Models;
+            model = models.Item(1);
+           
+            slots = model.Slots;
+
+            //Adding a new slot
+            slots.Add(Profile: profile,
+                SlotType: FeaturePropertyConstants.igRegularSlot,
+                SlotEndCondition: FeaturePropertyConstants.igFormedEnd,
+                SlotWidth: 0.005,
+                SlotOffsetWidth: 0,
+                SlotOffsetDepth: 0,
+                ExtentType: FeaturePropertyConstants.igThroughAll,
+                ExtentSide: FeaturePropertyConstants.igLeft,
+                FiniteDistance: 0,
+                KeyPointFlags: KeyPointExtentConstants.igTangentNormal,
+                KeyPointOrTangentFace: null,
+                ExtentType2: FeaturePropertyConstants.igNone,
+                ExtentSide2: FeaturePropertyConstants.igNone,
+                FiniteDistance2: 0,
+                KeyPointFlags2: KeyPointExtentConstants.igTangentNormal,
+                KeyPointOrTangentFace2: null,
+                FromFaceOrPlane: null,
+                FromOffsetSide: OffsetSideConstants.seOffsetNone,
+                FromOffsetDistance: 0,
+                ToFaceOrPlane: null,
+                ToOffsetSide: OffsetSideConstants.seOffsetNone,
+                ToOffsetDistance: 0
+                );
+        }
+
+
+        //creates a cutout
+        private void Create_Cutout(double PointOnGraphic_X, double PointOnGraphic_Y, double PointOnGraphic_Z, SolidEdgeGeometry.Face selected_face,
+            int[] face_norm, string selected_face_normal)
+        {
+            PartDocument _doc = _application.ActiveDocument as PartDocument;
+
+            RefPlanes refPlanes = null;
+            RefPlane refPlane = null;
+
+            refPlanes = _doc.RefPlanes;
+            //Adding parallel refplane to the selected face 
+            refPlane = refPlanes.AddParallelByDistance(selected_face, 0.0, ReferenceElementConstants.igNormalSide, false, false, true, false);
+
+            Relations2d relations2D = null;
+            ProfileSets profileSets = null;
+            ProfileSet profileSet = null;
+            Profiles profiles = null;
+            Profile profile = null;
+            Lines2d lines2D = null;
+            Models models = null;
+            Model model = null;
+            Sketchs sketchs = null;
+            Sketch sketch = null;
+            ExtrudedCutouts extrudedCutouts = null;
+           
+           
+            sketchs = _doc.Sketches;
+            sketch = sketchs.Add();
+
+            profileSets = _doc.ProfileSets;
+            profileSet = profileSets.Add();
+            profiles = sketch.Profiles;
+
+            profile = profiles.Add(refPlane);
+            lines2D = profile.Lines2d;
+            relations2D = (Relations2d)profile.Relations2d;
+
+            //adding a 2D profile for the cutout
+            lines2D.AddBy2Points(0.03, -0.055, 0.045, -0.055);
+            lines2D.AddBy2Points(0.045, -0.055, 0.045, -0.04);
+            lines2D.AddBy2Points(0.045, -0.04, 0.03, -0.04);
+            lines2D.AddBy2Points(0.03, -0.04, 0.03, -0.055);
+
+            profile.End(ProfileValidationType.igProfileClosed);
+
+            models = _doc.Models;
+            model = models.Item(1);
+
+            extrudedCutouts = model.ExtrudedCutouts;
+
+            //adding a new extruded cutout
+            extrudedCutouts.AddThroughNext(Profile: profile,
+                ProfileSide: FeaturePropertyConstants.igLeft,
+                ProfilePlaneSide: FeaturePropertyConstants.igLeft
+                );
+            
+        }
     }
 }
