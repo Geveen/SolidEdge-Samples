@@ -32,8 +32,8 @@
       <button id="13" size="large" label="Question" screentip="Question Screentip" supertip="Question Supertip" imageId="113" />
     </group>
     <group name="Group6">
-      <checkBox id="14" label="Checkbox1" screentip="Checkbox1 Screentip" supertip="Checkbox1 Supertip" />
-      <checkBox id="15" label="Checkbox2" screentip="Checkbox2 Screentip" supertip="Checkbox2 Supertip" />
+      <checkBox id="14" label="Itemset Prediction" screentip="Itemset Prediction Screentip" supertip="Itemset Prediction Supertip" />
+      <checkBox id="15" label="N-gram Prediction" screentip="N-gram Prediction Screentip" supertip="N-gram Prediction Supertip" />
       <checkBox id="16" label="Checkbox3" screentip="Checkbox3 Screentip" supertip="Checkbox3 Supertip" />
       <radioButton id="17" label="Radiobutton1" screentip="Radiobutton1 Screentip" supertip="Radiobutton1 Supertip" />
       <radioButton id="18" label="Radiobutton2" screentip="Radiobutton2 Screentip" supertip="Radiobutton2 Supertip" />

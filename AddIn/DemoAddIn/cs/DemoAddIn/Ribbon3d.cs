@@ -23,6 +23,8 @@ namespace DemoAddIn
         private RibbonButton _buttonBoundingBox;
         private RibbonButton _buttonOpenGlBoxes;
         private RibbonButton _buttonGdiPlus;
+        private RibbonCheckBox _checkboxItemset;
+        private RibbonCheckBox _checkNgram;
         private RibbonButton _buttonHole;
         private RibbonButton _buttonCutout;
         private RibbonButton _buttonSlot;
@@ -53,6 +55,8 @@ namespace DemoAddIn
             _buttonBoundingBox = GetButton(20);
             _buttonOpenGlBoxes = GetButton(21);
             _buttonGdiPlus = GetButton(22);
+            _checkboxItemset = GetCheckBox(14);
+            _checkNgram = GetCheckBox(15);
             _buttonHole = GetButton(4);
             _buttonCutout = GetButton(5);
             _buttonSlot = GetButton(6);
@@ -64,7 +68,10 @@ namespace DemoAddIn
             _buttonHole.Click += _buttonHole_Click;
             _buttonCutout.Click += _buttoncutout_Click;
             _buttonSlot.Click += _buttonSlot_Click;
+            _checkboxItemset.Click += _itemset_Checked;
+            _checkNgram.Click += _ngram_Checked;
 
+            _checkboxItemset.Checked = true;
             // Get the Solid Edge version.
             var version = DemoAddIn.Instance.SolidEdgeVersion;
             _application = DemoAddIn.Instance.Application;
@@ -150,6 +157,24 @@ namespace DemoAddIn
             overlay.ShowBoundingBox = _buttonBoundingBox.Checked;
         }
 
+        void _itemset_Checked(RibbonControl control)
+        {
+
+            if (_checkNgram.Checked == true)
+            {
+                _checkNgram.Checked = false;
+            }
+            
+        }
+
+        void _ngram_Checked(RibbonControl control)
+        {
+            if(_checkboxItemset.Checked == true)
+            {
+                _checkboxItemset.Checked = false;
+            }
+        }
+
         void _buttonHole_Click(RibbonControl control)
         {
             var overlay = GetActiveOverlay();
@@ -228,12 +253,12 @@ namespace DemoAddIn
 
         async void ISEMouseEvents.MouseClick(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
         {
+           
             if (checkhole)
             {
                 try
                 {
-
-                    //MessageBox.Show($"dx{1000 * dX}, dy{1000 * dY}, dz{1000 * dZ}");
+                   
                     _getting_suggestions = true;
 
                     _application = SolidEdgeCommunity.SolidEdgeUtils.Connect();
@@ -242,7 +267,7 @@ namespace DemoAddIn
                     Model _model = _doc.Models.Item(1);
                     Holes _holes = _model.Holes;
                     var cc = _holes.Count;
-                    
+                    //MessageBox.Show($"Hole count {cc}");
                     var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
 
 
@@ -266,14 +291,15 @@ namespace DemoAddIn
                     int z = (int)Math.Round(norm[2]);
                     int[] face_norm = new int[3]
                     {
-                     x,y,z
+                            x,y,z
                     };
 
                     string Face_normal_vector = string.Format("{0:0}{1:0}{2:0}", x, y, z);
 
                     //Accessing 3D mouse coordinates 
                     _mouse.PointOnGraphic(out int PointOnGraphicFlag, out double PointOnGraphic_X, out double PointOnGraphic_Y, out double PointOnGraphic_Z);
-                    MessageBox.Show($"PointonGraphic {PointOnGraphicFlag}, {PointOnGraphic_X}, {PointOnGraphic_Y}, {PointOnGraphic_Z}");
+                    //MessageBox.Show($"PointonGraphic {PointOnGraphicFlag}, {PointOnGraphic_X}, {PointOnGraphic_Y}, {PointOnGraphic_Z}");
+                    //MessageBox.Show($"dx{1000 * dX}, dy{1000 * dY}, dz{1000 * dZ}");
 
 
                     // create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
@@ -319,121 +345,193 @@ namespace DemoAddIn
 
                     _holeInfos = _holeInfos.OrderBy(p => p.diameter).ToList();
 
-                    string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [";
-                    bool first = true;
-
-                    //adding the hole diameters to query
-                    foreach (HoleInfo hi in _holeInfos)
+                    if (_checkboxItemset.Checked == true)
                     {
-                        if (!first)
+                        //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [";
+                        string query = "http://localhost:5000/v1/suggestions?query={\"status\": {\"v\": [";
+                        bool first = true;
+                        //adding the hole diameters to query
+                        foreach (HoleInfo hi in _holeInfos)
                         {
-                            query += ", ";
-                        }
-                        first = false;
-                        string add_v = String.Format("\"{0:0.0}\"", hi.diameter);
-                        query += add_v;
-                    }
-                    query += "], \"e\": [";
-
-
-                    double dist_bucket_size = 50;
-                    int v_source = 0;
-                    first = true;
-                    foreach (HoleInfo hi_source in _holeInfos)
-                    {
-                        int v_dest = 0;
-                        string bucket_dir_source = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_source.nx, hi_source.ny, hi_source.nz);
-                        // MessageBox.Show($"Source {hi_source.x}, {hi_source.y}, {hi_source.z} --- {hi_source.nx}, {hi_source.ny}, {hi_source.nz} ");
-                        // MessageBox.Show($"{bucket_dir_source}");
-                        foreach (HoleInfo hi_dest in _holeInfos)
-                        {
-
-                            if (v_dest > v_source)
+                            if (!first)
                             {
-                                //MessageBox.Show($"destination {hi_dest.x}, {hi_dest.y}, {hi_dest.z} --- {hi_dest.nx}, {hi_dest.ny}, {hi_dest.nz}");
-                                if (!first)
-                                {
-                                    query += ", ";
-                                }
-                                first = false;
-
-
-                                string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
-                                double e_dist = Math.Sqrt(Math.Pow(hi_source.x - hi_dest.x, 2) + Math.Pow(hi_source.y - hi_dest.y, 2) + Math.Pow(hi_source.z - hi_dest.z, 2));
-                                //MessageBox.Show($"Bucket_dir_dest {bucket_dir_dest}, e_dist {e_dist}");
-                                double e_dist_bucket = Math.Ceiling(e_dist / dist_bucket_size);
-                                //MessageBox.Show($"e_dist_bucket {e_dist_bucket}");
-                                string add_e = string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"{2:0}\"]", hi_source.diameter, hi_dest.diameter, e_dist_bucket);
-                                if (bucket_dir_source == bucket_dir_dest)
-                                {
-                                    add_e += string.Format(",[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
-                                    //add_e += string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
-                                }
-                                query += add_e;
+                                query += ", ";
                             }
-                            v_dest += 1;
+                            first = false;
+                            string add_v = String.Format("\"{0:0.0}\"", hi.diameter);
+                            query += add_v;
                         }
-                        v_source += 1;
-                    }
-
-                    // query += "]}, \"location\":[[[\"32.0\", \"*\"], \"co_dir\"],";
-                    query += "]}, \"location\": [";
+                        query += "], \"e\": [";
 
 
-
-                    first = true;
-                    //Calculating distance from the mouse location to the hole center points 
-                    foreach (HoleInfo H_dest in _holeInfos)
-                    {
-                        if (!first)
+                        double dist_bucket_size = 50;
+                        int v_source = 0;
+                        first = true;
+                        foreach (HoleInfo hi_source in _holeInfos)
                         {
-                            query += ", ";
+                            int v_dest = 0;
+                            string bucket_dir_source = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_source.nx, hi_source.ny, hi_source.nz);
+                            // MessageBox.Show($"Source {hi_source.x}, {hi_source.y}, {hi_source.z} --- {hi_source.nx}, {hi_source.ny}, {hi_source.nz} ");
+                            // MessageBox.Show($"{bucket_dir_source}");
+                            foreach (HoleInfo hi_dest in _holeInfos)
+                            {
+
+                                if (v_dest > v_source)
+                                {
+                                    //MessageBox.Show($"destination {hi_dest.x}, {hi_dest.y}, {hi_dest.z} --- {hi_dest.nx}, {hi_dest.ny}, {hi_dest.nz}");
+                                    if (!first)
+                                    {
+                                        query += ", ";
+                                    }
+                                    first = false;
+
+
+                                    string bucket_dir_dest = string.Format("{0:0.0000}{1:0.0000}{2:0.0000}", hi_dest.nx, hi_dest.ny, hi_dest.nz);
+                                    double e_dist = Math.Sqrt(Math.Pow(hi_source.x - hi_dest.x, 2) + Math.Pow(hi_source.y - hi_dest.y, 2) + Math.Pow(hi_source.z - hi_dest.z, 2));
+                                    //MessageBox.Show($"Bucket_dir_dest {bucket_dir_dest}, e_dist {e_dist}");
+                                    double e_dist_bucket = Math.Ceiling(e_dist / dist_bucket_size);
+                                    //MessageBox.Show($"e_dist_bucket {e_dist_bucket}");
+                                    string add_e = string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"{2:0}\"]", hi_source.diameter, hi_dest.diameter, e_dist_bucket);
+                                    if (bucket_dir_source == bucket_dir_dest)
+                                    {
+                                        add_e += string.Format(",[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
+                                        //add_e += string.Format("[[\"{0:0.0}\", \"{1:0.0}\"], \"co_dir\"]", hi_source.diameter, hi_dest.diameter);
+                                    }
+                                    query += add_e;
+                                }
+                                v_dest += 1;
+                            }
+                            v_source += 1;
                         }
-                        first = false;
 
-                        double e_dest = Math.Sqrt(Math.Pow(H_dest.x - (1000 * PointOnGraphic_X), 2) + Math.Pow(H_dest.y - (1000 * PointOnGraphic_Y), 2) + Math.Pow(H_dest.z - (1000 * PointOnGraphic_Z), 2));
-                        double e_dist_bucket = Math.Ceiling(e_dest / dist_bucket_size);
-                        string add_e = string.Format("[[\"{0:0.0}\", \"*\"], \"{1:0}\"]", H_dest.diameter, e_dist_bucket);
+                        query += "]}, \"location\": [";
 
-                        string Hole_Normal_vector = string.Format("{0:0}{1:0}{2:0}", H_dest.nx, H_dest.ny, H_dest.nz);
-                        if (Hole_Normal_vector == Face_normal_vector)
+
+
+                        first = true;
+                        //Calculating distance from the mouse location to the hole center points 
+                        foreach (HoleInfo H_dest in _holeInfos)
                         {
-                            add_e += string.Format(", [[\"{0:0.0}\", \"*\"], \"co_dir\"]", H_dest.diameter);
-                            //MessageBox.Show($"2D coordinates {H_dest.xd},{H_dest.yd}");
+                            if (!first)
+                            {
+                                query += ", ";
+                            }
+                            first = false;
+
+                            double e_dest = Math.Sqrt(Math.Pow(H_dest.x - (1000 * PointOnGraphic_X), 2) + Math.Pow(H_dest.y - (1000 * PointOnGraphic_Y), 2) + Math.Pow(H_dest.z - (1000 * PointOnGraphic_Z), 2));
+                            double e_dist_bucket = Math.Ceiling(e_dest / dist_bucket_size);
+                            string add_e = string.Format("[[\"{0:0.0}\", \"*\"], \"{1:0}\"]", H_dest.diameter, e_dist_bucket);
+
+                            string Hole_Normal_vector = string.Format("{0:0}{1:0}{2:0}", H_dest.nx, H_dest.ny, H_dest.nz);
+                            if (Hole_Normal_vector == Face_normal_vector)
+                            {
+                                add_e += string.Format(", [[\"{0:0.0}\", \"*\"], \"co_dir\"]", H_dest.diameter);
+                                //MessageBox.Show($"2D coordinates {H_dest.xd},{H_dest.yd}");
+                            }
+
+                            query += add_e;
                         }
+                        query += "]}";
 
-                        query += add_e;
+                        //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
+                        var values = new Dictionary<string, string> { };
+
+                        var content = new FormUrlEncodedContent(values);
+                        var response = await _client.GetAsync(query);
+                        var responseString = await response.Content.ReadAsStringAsync();
+
+                        string pattern = @"\d*\.\d";
+                        matchCollection = Regex.Matches(responseString, pattern);
+
+                        count = matchCollection.Count;
+                        New_match = new double[count];
+                        int i = 0;
+                        string match = "";
+
+                        foreach (Match m in matchCollection)
+                        {
+                            match += string.Format("{0} ", m.Value);
+                            New_match[i] = Convert.ToDouble(m.Value);
+                            i++;
+                        }
+                        // MessageBox.Show($"{match}");
+                        
+                        create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
+                        _getting_suggestions = false;
                     }
-                    query += "]}";
-
-                    MessageBox.Show($"{query}");
-
-                    //string query = "http://trapezohedron.shapespace.com:9985/v1/suggestions?query={\"status\": {\"v\": [\"32.0\", \"57.0\"], \"e\": [[[\"32.0\", \"57.0\"], \"co_dir\"]]}, \"location\": [[[\"32.0\", \"*\"], \"co_dir\"]]}";
-                    var values = new Dictionary<string, string> { };
-
-                    var content = new FormUrlEncodedContent(values);
-                    var response = await _client.GetAsync(query);
-                    var responseString = await response.Content.ReadAsStringAsync();
-                    MessageBox.Show(responseString);
-
-                    string pattern = @"\d*\.\d";
-                    matchCollection = Regex.Matches(responseString, pattern);
-
-                    count = matchCollection.Count;
-                    Match = new double[count];
-                    int i = 0;
-                    string match = "";
-
-                    foreach (Match m in matchCollection)
+                    else if(_checkNgram.Checked == true)
                     {
-                        match += string.Format("{0} ", m.Value);
-                        Match[i] = Convert.ToDouble(m.Value);
-                        i++;
-                    }
-                    // MessageBox.Show($"{match}");
+                        string query = "http://localhost:5000/v1/ngram_suggestions?query={\"status\": {\"v\": [";
 
-                    create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
-                    _getting_suggestions = false;
+                        bool first = true;
+                        //adding the hole diameters to query
+                        foreach (HoleInfo hi in _holeInfos)
+                        {
+                            if (!first)
+                            {
+                                query += ", ";
+                            }
+                            first = false;
+                            string add_v = "";
+                            string holestr_dir = hi.diameter.ToString();
+                            string[] a = holestr_dir.Split(new char[] { '.' });
+                            if(a.Length == 1)
+                            {
+                                add_v = String.Format("\"{0:0}\"", hi.diameter);
+                            }
+                            else
+                            {
+                                int decimals = a[1].Length;
+                                if (decimals == 1)
+                                {
+                                    add_v = String.Format("\"{0:0.0}\"", hi.diameter);
+                                }
+                                else if (decimals == 2)
+                                {
+                                    add_v = String.Format("\"{0:0.00}\"", hi.diameter);
+                                }
+                            }
+                            query += add_v;
+                        }
+                        query += "]}}";
+                        //MessageBox.Show($"{query}");
+
+                        var values = new Dictionary<string, string> { };
+
+                        var content = new FormUrlEncodedContent(values);
+                        var response = await _client.GetAsync(query);
+                        var responseString = await response.Content.ReadAsStringAsync();
+                        //MessageBox.Show(responseString);
+
+                        string pattern = @"\d+\.\d+";
+                        matchCollection = Regex.Matches(responseString, pattern);
+
+                        count = matchCollection.Count;
+                        New_match = new double[count];
+                        int i = 0;
+                        string match = "";
+
+                        foreach (Match m in matchCollection)
+                        {
+                            match += string.Format("{0} ", m.Value);
+                            New_match[i] = Convert.ToDouble(m.Value);
+                            i++;
+                        }
+                        // MessageBox.Show($"{match}");
+
+                        create_hole(PointOnGraphic_X, PointOnGraphic_Y, PointOnGraphic_Z, selected_face, face_norm, Face_normal_vector);
+                        _getting_suggestions = false;
+
+                    }
+                    else
+                    {
+                        MessageBox.Show("Feature prediction type should be selected");
+                    }
+                    
+                    
+                    
+
+                    
                 }
                 catch (Exception ex)
                 {
@@ -672,7 +770,13 @@ namespace DemoAddIn
             }
         }
 
-        public double[] new_match = Match;
+        //public static double[] new_match = Match;
+
+        public static double[] New_match
+        {
+            get { return Match; }
+            set { Match = value; }
+        }
 
 
         async void ISEMouseEvents.MouseDown(short sButton, short sShift, double dX, double dY, double dZ, object pWindowDispatch, int lKeyPointType, object pGraphicDispatch)
@@ -699,172 +803,177 @@ namespace DemoAddIn
         private void create_hole(double PointOnGraphic_X, double PointOnGraphic_Y, double PointOnGraphic_Z,SolidEdgeGeometry.Face selected_face,
             int[] face_norm,string selected_face_normal)
         {
-            
-            // var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
-            PartDocument _doc = _application.ActiveDocument as PartDocument;
-           
-            RefPlanes refPlanes = null;
-            RefPlane refPlane = null;
-  
-            refPlanes = _doc.RefPlanes;
-            //Adding parallel refplane to the selected face 
-            refPlane = refPlanes.AddParallelByDistance(selected_face, 0.0, ReferenceElementConstants.igNormalSide, false, false, true, false);
-
-            
-
-            //Running windows form application
-            System.Windows.Forms.Application.EnableVisualStyles();
-            System.Windows.Forms.Application.Run(new Form1());
-
-            MessageBox.Show("Cancel Hole Dimension?");
-            Form1 form1 = new Form1();
-
-            //Hole diameter from user input
-            double cc = form1.Hole_dia;
-            while(cc < 0.0)
+            try
             {
-                MessageBox.Show("Enter valid dimension");
+                // var selected_face = pGraphicDispatch as SolidEdgeGeometry.Face;
+                PartDocument _doc = _application.ActiveDocument as PartDocument;
+
+                RefPlanes refPlanes = null;
+                RefPlane refPlane = null;
+
+                refPlanes = _doc.RefPlanes;
+                //Adding parallel refplane to the selected face 
+                refPlane = refPlanes.AddParallelByDistance(selected_face, 0.0, ReferenceElementConstants.igNormalSide, false, false, true, false);
+
+
+
+                //Running windows form application
                 System.Windows.Forms.Application.EnableVisualStyles();
                 System.Windows.Forms.Application.Run(new Form1());
-                Form1 form2 = new Form1();
-                double dd = form2.Hole_dia;
-                MessageBox.Show("Cancel diamension?");
-                if (cc == dd)
+
+                Form1 form1 = new Form1();
+                //MessageBox.Show("Cancel Hole Dimension?");
+
+                //Hole diameter from user input
+                double cc = form1.Hole_dia;
+                while (cc < 0.0)
                 {
-                    MessageBox.Show("invalid argument");
-                    dd = 0.0;   
+                    MessageBox.Show("Enter valid dimension");
+                    System.Windows.Forms.Application.EnableVisualStyles();
+                    System.Windows.Forms.Application.Run(new Form1());
+                    Form1 form2 = new Form1();
+                    double dd = form2.Hole_dia;
+                    MessageBox.Show("Cancel diamension?");
+                    if (cc == dd)
+                    {
+                        MessageBox.Show("invalid argument");
+                        dd = 0.0;
+                    }
+                    cc = dd;
                 }
-                cc = dd;
-            }
-             
-            ProfileSets profileSets = null;
-            ProfileSet profileSet = null;
-            Profiles profiles = null;
-            Profile profile = null;
-            Models models = null;
-            HoleDataCollection holeDataCollection = null;
-            HoleData holeData = null;
-            Holes2d holes2D = null;
-            Holes holes = null;
-            Sketchs sketchs = null;
-            Sketch sketch = null;
-            
 
-            Array ref_dir = new double[3] as Array;
+                ProfileSets profileSets = null;
+                ProfileSet profileSet = null;
+                Profiles profiles = null;
+                Profile profile = null;
+                Models models = null;
+                HoleDataCollection holeDataCollection = null;
+                HoleData holeData = null;
+                Holes2d holes2D = null;
+                Holes holes = null;
+                Sketchs sketchs = null;
+                Sketch sketch = null;
 
-            //getting the unit vector of the reference direction
-            refPlane.GetReferenceDirection(ref ref_dir);
-            var Ref_dirX = ref_dir as double[];
 
-            Array root_point = new double[3] as Array;
-            refPlane.GetRootPoint(ref root_point);
-            var Root_point = root_point as double[];
-           
-            //calculating the cross-product between ref_dir and normal vector
-            double[] Ref_dirY = new double[3]
-            {
+                Array ref_dir = new double[3] as Array;
+
+                //getting the unit vector of the reference direction
+                refPlane.GetReferenceDirection(ref ref_dir);
+                var Ref_dirX = ref_dir as double[];
+
+                Array root_point = new double[3] as Array;
+                refPlane.GetRootPoint(ref root_point);
+                var Root_point = root_point as double[];
+
+                //calculating the cross-product between ref_dir and normal vector
+                double[] Ref_dirY = new double[3]
+                {
                 Ref_dirX[2] * face_norm[1] - Ref_dirX[1] * face_norm[2],
                 Ref_dirX[0] * face_norm[2] - Ref_dirX[2] * face_norm[0],
                 Ref_dirX[1] * face_norm[0] - Ref_dirX[0] * face_norm[1]
-            };
+                };
 
-            double Xcenter = -0.06; //local coordinates
-            double Ycenter = -0.06;
-            //calculating global coordinates from local coordinates
-            double[] X_bar = new double[3]
-            {
+                double Xcenter = -0.06; //local coordinates
+                double Ycenter = -0.06;
+                //calculating global coordinates from local coordinates
+                double[] X_bar = new double[3]
+                {
                 Xcenter * Ref_dirX[0] + Ycenter * Ref_dirY[0] + Root_point[0],
                 Xcenter * Ref_dirX[1] + Ycenter * Ref_dirY[1] + Root_point[1],
                 Xcenter * Ref_dirX[2] + Ycenter * Ref_dirY[2] + Root_point[2]
-            };
+                };
 
-            //Calculating the angle between vectors root_point and global
-            double[] OX = new double[3]
-            {
+                //Calculating the angle between vectors root_point and global
+                double[] OX = new double[3]
+                {
                     PointOnGraphic_X - Root_point[0],
                     PointOnGraphic_Y - Root_point[1],
                     PointOnGraphic_Z - Root_point[2]
-            };
+                };
 
-            //calculating the modulus of vector OX
-            double OX_Mod = Math.Sqrt(Math.Pow(OX[0], 2) + Math.Pow(OX[1], 2) + Math.Pow(OX[2], 2));
+                //calculating the modulus of vector OX
+                double OX_Mod = Math.Sqrt(Math.Pow(OX[0], 2) + Math.Pow(OX[1], 2) + Math.Pow(OX[2], 2));
 
-            //calculating the modulus of vector Ref_dirX
-            double Ref_dirX_Mod = Math.Sqrt(Math.Pow(Ref_dirX[0], 2) + Math.Pow(Ref_dirX[1], 2) + Math.Pow(Ref_dirX[2], 2));
+                //calculating the modulus of vector Ref_dirX
+                double Ref_dirX_Mod = Math.Sqrt(Math.Pow(Ref_dirX[0], 2) + Math.Pow(Ref_dirX[1], 2) + Math.Pow(Ref_dirX[2], 2));
 
-            //calculating the modulus of the vector ReF_dirY
-            double Ref_dirY_Mod = Math.Sqrt(Math.Pow(Ref_dirY[0], 2) + Math.Pow(Ref_dirY[1], 2) + Math.Pow(Ref_dirY[2], 2));
+                //calculating the modulus of the vector ReF_dirY
+                double Ref_dirY_Mod = Math.Sqrt(Math.Pow(Ref_dirY[0], 2) + Math.Pow(Ref_dirY[1], 2) + Math.Pow(Ref_dirY[2], 2));
 
-            //calculating the dot product between vector OX and Ref_dirY
-            double dotY = (OX[0] * Ref_dirY[0]) + (OX[1] * Ref_dirY[1]) + (OX[2] * Ref_dirY[2]);
+                //calculating the dot product between vector OX and Ref_dirY
+                double dotY = (OX[0] * Ref_dirY[0]) + (OX[1] * Ref_dirY[1]) + (OX[2] * Ref_dirY[2]);
 
-            //calculating the dot product between vector OX and Ref_dirX
-            double dotX = (OX[0] * Ref_dirX[0]) + (OX[1] * Ref_dirX[1]) + (OX[2] * Ref_dirX[2]);
+                //calculating the dot product between vector OX and Ref_dirX
+                double dotX = (OX[0] * Ref_dirX[0]) + (OX[1] * Ref_dirX[1]) + (OX[2] * Ref_dirX[2]);
 
-            //calculating the angle between vector OX and Ref_dirY
-            double angleY = Math.Acos(dotY / (OX_Mod * Ref_dirY_Mod));
+                //calculating the angle between vector OX and Ref_dirY
+                double angleY = Math.Acos(dotY / (OX_Mod * Ref_dirY_Mod));
 
-            //calculating the angle between vector OX and Ref_dirX
-            double angleX = Math.Acos(dotX / (OX_Mod * Ref_dirX_Mod));
+                //calculating the angle between vector OX and Ref_dirX
+                double angleX = Math.Acos(dotX / (OX_Mod * Ref_dirX_Mod));
 
-            double X_dir = 0.0;
-            double Y_dir = 0.0;
-           
+                double X_dir = 0.0;
+                double Y_dir = 0.0;
 
-            if (angleY > Math.PI / 2)
+
+                if (angleY > Math.PI / 2)
+                {
+                    X_dir = OX_Mod * Math.Cos(-angleX);
+                    Y_dir = OX_Mod * Math.Sin(-angleX);
+                }
+                else
+                {
+                    X_dir = OX_Mod * Math.Cos(angleX);
+                    Y_dir = OX_Mod * Math.Sin(angleX);
+                }
+
+                if (OX_Mod == 0.0)
+                {
+                    X_dir = 0.0;
+                    Y_dir = 0.0;
+                }
+
+                if (cc > 0.0)
+                {
+                    sketchs = _doc.Sketches;
+                    sketch = sketchs.Add();
+
+                    holeDataCollection = _doc.HoleDataCollection;
+
+                    //Defining hole properties
+                    holeData = holeDataCollection.Add(
+                        HoleType: SolidEdgePart.FeaturePropertyConstants.igRegularHole,
+                        HoleDiameter: cc / 1000);
+
+                    profileSets = _doc.ProfileSets;
+                    profileSet = profileSets.Add();
+                    //profiles = profileSet.Profiles;
+                    profiles = sketch.Profiles;
+
+                    profile = profiles.Add(refPlane);
+                    holes2D = profile.Holes2d;
+
+                    var dd = holes2D.Add(X_dir, Y_dir);
+
+
+                    profile.End(ProfileValidationType.igProfileClosed);
+
+                    // dd.Move(X_dir, Y_dir, 0.0, 0.0);
+                    //_application.StartCommand(SolidEdgeConstants.PartCommandConstants.PartViewLookatFace);
+
+                    //getting the hole collection and creating a simple hole
+                    Model model = _doc.Models.Item(1);
+                    holes = model.Holes;
+                    holes.AddThroughNext(
+                        Profile: profile,
+                        ProfilePlaneSide: SolidEdgePart.FeaturePropertyConstants.igBoth,
+                        Data: holeData);
+
+
+                }
+            }catch(Exception ex)
             {
-                X_dir = OX_Mod * Math.Cos(-angleX);
-                Y_dir = OX_Mod * Math.Sin(-angleX);
-            }
-            else
-            {
-                X_dir = OX_Mod * Math.Cos(angleX);
-                Y_dir = OX_Mod * Math.Sin(angleX);
-            }
-
-            if (OX_Mod == 0.0)
-            {
-                X_dir = 0.0;
-                Y_dir = 0.0;
-            }
-
-            if (cc > 0.0)
-            {
-                sketchs = _doc.Sketches;
-                sketch = sketchs.Add();
-
-                holeDataCollection = _doc.HoleDataCollection;
-
-                //Defining hole properties
-                holeData = holeDataCollection.Add(
-                    HoleType: SolidEdgePart.FeaturePropertyConstants.igRegularHole,
-                    HoleDiameter: cc / 1000);
-
-                profileSets = _doc.ProfileSets;
-                profileSet = profileSets.Add();
-                //profiles = profileSet.Profiles;
-                profiles = sketch.Profiles;
-
-                profile = profiles.Add(refPlane);
-                holes2D = profile.Holes2d;
-
-                var dd = holes2D.Add(X_dir, Y_dir);
-
-                
-                profile.End(ProfileValidationType.igProfileClosed);
-                
-                // dd.Move(X_dir, Y_dir, 0.0, 0.0);
-                //_application.StartCommand(SolidEdgeConstants.PartCommandConstants.PartViewLookatFace);
-
-                //getting the hole collection and creating a simple hole
-                Model model = _doc.Models.Item(1);
-                holes = model.Holes;
-                holes.AddThroughNext(
-                    Profile: profile,
-                    ProfilePlaneSide: SolidEdgePart.FeaturePropertyConstants.igBoth,
-                    Data: holeData);
-                
-
+                MessageBox.Show(ex.Message);
             }
         }
 

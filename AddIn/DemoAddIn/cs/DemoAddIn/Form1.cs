@@ -14,27 +14,25 @@ namespace DemoAddIn
     public partial class Form1 : Form
     {
         private static double _Hole_dia = 0.0;
-       
 
         public Form1()
         {
             InitializeComponent();
 
-            Ribbon3d ribbon3D = new Ribbon3d();
-            double[] non_rep = ribbon3D.new_match.Distinct().ToArray(); 
+            //Ribbon3d ribbon3D = new Ribbon3d();
+            double[] non_rep = Ribbon3d.New_match.Distinct().ToArray();
+            //double[] non_rep = ribbon3D.new_match.Distinct().ToArray(); 
 
             foreach(double d in non_rep)
             {
                     Holedia_combo.Items.Add(d);   
             }
-            
         }
 
         private void OK_button_Click(object sender, EventArgs e)
         {
-            _Hole_dia = Convert.ToDouble(Holedia_combo.Text);
-            
-            Application.Exit();
+            _Hole_dia = Convert.ToDouble(Holedia_combo.Text);;
+            this.Close();
             
         }
 
@@ -43,7 +41,7 @@ namespace DemoAddIn
         private void Cancel_button_Click(object sender, EventArgs e)
         {
             _Hole_dia = 0.0;
-            Application.Exit();
+            this.Close();
         }
 
         private void Form1_Load(object sender, EventArgs e)

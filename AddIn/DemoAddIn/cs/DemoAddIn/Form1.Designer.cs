@@ -37,7 +37,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(204, 18);
+            this.label2.Location = new System.Drawing.Point(204, 28);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(74, 13);
             this.label2.TabIndex = 1;
@@ -68,7 +68,7 @@
             // Holedia_combo
             // 
             this.Holedia_combo.FormattingEnabled = true;
-            this.Holedia_combo.Location = new System.Drawing.Point(12, 15);
+            this.Holedia_combo.Location = new System.Drawing.Point(12, 25);
             this.Holedia_combo.Name = "Holedia_combo";
             this.Holedia_combo.Size = new System.Drawing.Size(186, 21);
             this.Holedia_combo.TabIndex = 8;
@@ -78,7 +78,7 @@
             // 
             this.AcceptButton = this.OK_button;
             this.CancelButton = this.Cancel_button;
-            this.ClientSize = new System.Drawing.Size(355, 218);
+            this.ClientSize = new System.Drawing.Size(374, 225);
             this.Controls.Add(this.Holedia_combo);
             this.Controls.Add(this.Cancel_button);
             this.Controls.Add(this.OK_button);
